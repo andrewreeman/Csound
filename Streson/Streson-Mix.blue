@@ -1,0 +1,2070 @@
+<blueData version='2.1.9'>
+  <projectProperties>
+    <title></title>
+    <author></author>
+    <notes></notes>
+    <sampleRate>44100</sampleRate>
+    <ksmps>10</ksmps>
+    <channels>2</channels>
+    <diskSampleRate>44100</diskSampleRate>
+    <diskKsmps>10</diskKsmps>
+    <diskChannels>2</diskChannels>
+    <useAudioOut>true</useAudioOut>
+    <useAudioIn>false</useAudioIn>
+    <useMidiIn>false</useMidiIn>
+    <useMidiOut>false</useMidiOut>
+    <noteAmpsEnabled>true</noteAmpsEnabled>
+    <outOfRangeEnabled>true</outOfRangeEnabled>
+    <warningsEnabled>true</warningsEnabled>
+    <benchmarkEnabled>true</benchmarkEnabled>
+    <advancedSettings></advancedSettings>
+    <completeOverride>false</completeOverride>
+    <fileName></fileName>
+    <askOnRender>false</askOnRender>
+    <diskNoteAmpsEnabled>true</diskNoteAmpsEnabled>
+    <diskOutOfRangeEnabled>true</diskOutOfRangeEnabled>
+    <diskWarningsEnabled>true</diskWarningsEnabled>
+    <diskBenchmarkEnabled>true</diskBenchmarkEnabled>
+    <diskAdvancedSettings></diskAdvancedSettings>
+    <diskCompleteOverride>false</diskCompleteOverride>
+    <diskAlwaysRenderEntireProject>false</diskAlwaysRenderEntireProject>
+    <csladspaSettings>
+      <name/>
+      <maker/>
+      <uniqueId>0</uniqueId>
+      <copyright/>
+      <portDefinitionList/>
+      <enabled>false</enabled>
+    </csladspaSettings>
+  </projectProperties>
+  <arrangement>
+    <instrumentAssignment arrangementId='1' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Streson</name>
+        <comment></comment>
+        <globalOrc>gi_tab_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+gi_tab_2_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 1, 1
+gi_tab_3_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 9, 1, 1, 0, 2, 1, 0.25, 3, 1, 0.5, 4, 1, 0, 5, 1, 0.25
+gi_tab_4_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 0, 0.5, 0, 0.3, 0, 0.15, 0, 0.075, 0, 0.037
+gi_tab_5_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 11, 1, 1, 1
+gi_tab_6_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 30, gi_tab_2_&lt;INSTR_ID&gt;,1.01, 8
+gi_tab_7_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, 0, 3, 0, 3, 0, 1
+gi_tab_8_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 3, 1, 1, 0, 0
+gi_tab_9_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, -3, 3, -15, 0, 25, 0, 0, 0, 0.2
+gi_tab_10_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 0.8, 0, 0.1, 0, 0, 1
+
+gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>
+/*
+
+Streson-Mix is an instrument that makes use of four audio-generation opcodes: buzz, oscil and two fm opcodes. 
+The output of these are mixed and input to a Streson opcode. Streson simulates the karplus-strong algorithm.
+
+The score p-fields are just pitch in hertz and volume in a range of 0 to 1.
+
+The interface controls are:
+
+The number of harmonics for the buzz opcode.
+The table number to read for the buzz and oscil opcodes.
+The stereo diffusion.
+The order the elements are input to the Streson opcode. (the sliders control a delay unit for each element).
+The volume levels for each element.
+
+*/
+
+
+
+knote = p4
+ivol = p5
+
+
+;------------------------
+
+;if &lt;harm&gt; is 0 then a random harmonic will be chosen
+
+
+if i(&lt;harm&gt;) == 0 then
+	inharm gauss 4   ;gaussian distribution, so values are usually around 4 harmonics
+
+	inharm = int(inharm)+4 ;scale  from -4 to +4 to give a range of 0 to 8 with the centre point being 4.
+else
+	inharm = i(&lt;harm&gt;)
+endif
+
+;-----------------------
+;kenv1 controls the amplitude levels. iinput determines how long the signal into streson lasts. This determines the 
+;attack period.
+
+iinput = rnd(0.007)
+iinput = 0.001+iinput
+kenv1 linseg ivol*0.2, iinput, 0, 0, 0
+
+; The foscil opcodes read from a simple sine function.
+
+
+
+
+asig buzz kenv1*&lt;buzz&gt;, knote, inharm, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;  ;choose a table
+asig2 oscil kenv1*&lt;sine&gt;, knote, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;
+asig3 foscil kenv1*&lt;fm1&gt;, knote, 1.1, 3, 200, gi_sine_1_&lt;INSTR_ID&gt;
+asig4 foscil kenv1*&lt;fm2&gt;, knote, 1, 20, 40, gi_sine_1_&lt;INSTR_ID&gt;
+
+
+;------------------------
+
+;The horizontal delay sliders on the interface determine the delay of each element.
+
+asig delay asig, (p3/10)*&lt;buzzdel&gt;
+asig2 delay asig2, (p3/10)*&lt;sinedel&gt;
+asig3 delay asig3, (p3/10)*&lt;fm1del&gt;
+asig4 delay asig4, (p3/10)*&lt;fm2del&gt;
+
+asig = (asig+asig2+asig3+asig4)*0.25
+
+;-----------------------
+/*
+an initial streson occurs here. Further on this signal is sent through two more stresons, one for the left speaker 
+and the other for the right. The resonance is determined by the volume level. Soft notes will have short resonances while loud notes
+will have longer resonance.
+*/
+
+
+ifdbk pow ivol, 0.005
+ares  streson asig, knote, ifdbk-0.001
+
+;--------------------------
+
+;idiff is the diffusion level. This determines the different level of feedback between the left and right streson (further below)
+idiff = i(&lt;diffuse&gt;)*0.2  ;a range of 0 to 0.2
+
+;determine if the left or right should gain precedence.
+irand_pan random 0, 1
+if irand_pan &gt;=0.5 then
+	ileft_diff = (0.8+idiff)-0.001 ;from 0.8 to 0.99999
+	iright_diff = 0.8
+else
+	ileft_diff = 0.8
+	iright_diff = (0.8+idiff)-0.001
+endif
+
+
+aresL streson ares, knote, ileft_diff
+aresR streson ares, knote, iright_diff
+
+;----------------------------------
+
+
+;Final stage applies a simple decay and scales accordingly.
+
+kenv2 linen ivol*0dbfs, 0, p3, 0.2
+
+iact active &lt;INSTR_ID&gt;
+iact = 1/iact
+icheck init iact
+kact = iact
+check:
+	icheck active &lt;INSTR_ID&gt;
+	icheck = 1/icheck
+	kact linseg iact, 0.001 , icheck, 0, icheck
+	reinit check
+	rireturn
+
+
+outs aresL*kenv2*kact, aresR*kenv2*kact
+
+</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>tablenum</objectName>
+            <x>369</x>
+            <y>100</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>1.0</resolution>
+            <value>8.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>false</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>diffuse</objectName>
+            <x>15</x>
+            <y>23</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.001</resolution>
+            <value>0.67700154</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>8</y>
+            <label>Stereo diffusion</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>378</x>
+            <y>83</y>
+            <label>Table</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>harm</objectName>
+            <x>221</x>
+            <y>22</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>20.0</maximum>
+            <resolution>1.0</resolution>
+            <value>14.999854</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>251</x>
+            <y>8</y>
+            <label>Harmonics (0 = random)</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>83</y>
+            <label>Delay time</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm2del</objectName>
+            <x>76</x>
+            <y>271</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>9.201025</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm1del</objectName>
+            <x>76</x>
+            <y>216</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.001</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>sinedel</objectName>
+            <x>76</x>
+            <y>166</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>5.4009643</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>buzzdel</objectName>
+            <x>76</x>
+            <y>101</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>6.7009783</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>87</x>
+            <y>83</y>
+            <label>as a proportion of p3</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>buzz</objectName>
+            <x>279</x>
+            <y>101</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.11302139</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>279</x>
+            <y>83</y>
+            <label>Levels</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>101</y>
+            <label>Buzz</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>sine</objectName>
+            <x>279</x>
+            <y>166</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.69786316</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm1</objectName>
+            <x>279</x>
+            <y>216</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.8131943</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm2</objectName>
+            <x>279</x>
+            <y>271</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.48494115</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>166</y>
+            <label>Sine</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>216</y>
+            <label>FM1</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>271</y>
+            <label>FM2</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='966628525' name='buzz' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.11302139'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.11302139'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-489695890' name='diffuse' label='' min='0.0' max='1.0' resolution='0.001' automationEnabled='false' value='0.67700154'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.001' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.555'/>
+              <linePoint x='0.78125' y='0.595'/>
+              <linePoint x='3.375' y='0.86100006'/>
+              <linePoint x='3.984375' y='0.528'/>
+              <linePoint x='4.203125' y='0.0'/>
+              <linePoint x='4.4375' y='0.95100003'/>
+              <linePoint x='5.859375' y='0.5'/>
+              <linePoint x='6.375' y='1.0'/>
+              <linePoint x='6.84375' y='0.0'/>
+              <linePoint x='8.109375' y='0.0'/>
+              <linePoint x='9.265625' y='1.0'/>
+              <linePoint x='17.65625' y='0.22200002'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='966628529' name='fm1' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.8131943'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.8131943'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='966628531' name='fm2' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.48494115'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.48494115'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-489695888' name='harm' label='' min='0.0' max='20.0' resolution='1.0' automationEnabled='false' value='14.999854'>
+            <line name='' version='2' max='20.0' min='0.0' resolution='1.0' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='18.0'/>
+              <linePoint x='0.5625' y='6.0'/>
+              <linePoint x='0.734375' y='1.0'/>
+              <linePoint x='1.09375' y='1.0'/>
+              <linePoint x='3.40625' y='8.0'/>
+              <linePoint x='4.46875' y='0.0'/>
+              <linePoint x='5.453125' y='7.0'/>
+              <linePoint x='6.21875' y='0.0'/>
+              <linePoint x='6.59375' y='1.0'/>
+              <linePoint x='7.078125' y='1.0'/>
+              <linePoint x='7.78125' y='1.0'/>
+              <linePoint x='8.1875' y='15.0'/>
+              <linePoint x='8.90625' y='4.0'/>
+              <linePoint x='17.28125' y='0.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='966628527' name='sine' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.69786316'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.69786316'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='2' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Streson</name>
+        <comment></comment>
+        <globalOrc>gi_tab_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+gi_tab_2_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 1, 1
+gi_tab_3_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 9, 1, 1, 0, 2, 1, 0.25, 3, 1, 0.5, 4, 1, 0, 5, 1, 0.25
+gi_tab_4_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 0, 0.5, 0, 0.3, 0, 0.15, 0, 0.075, 0, 0.037
+gi_tab_5_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 11, 1, 1, 1
+gi_tab_6_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 30, gi_tab_2_&lt;INSTR_ID&gt;,1.01, 8
+gi_tab_7_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, 0, 3, 0, 3, 0, 1
+gi_tab_8_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 3, 1, 1, 0, 0
+gi_tab_9_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, -3, 3, -15, 0, 25, 0, 0, 0, 0.2
+gi_tab_10_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 0.8, 0, 0.1, 0, 0, 1
+
+gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>
+/*
+
+Streson-Mix is an instrument that makes use of four audio-generation opcodes: buzz, oscil and two fm opcodes. 
+The output of these are mixed and input to a Streson opcode. Streson simulates the karplus-strong algorithm.
+
+The score p-fields are just pitch in hertz and volume in a range of 0 to 1.
+
+The interface controls are:
+
+The number of harmonics for the buzz opcode.
+The table number to read for the buzz and oscil opcodes.
+The stereo diffusion.
+The order the elements are input to the Streson opcode. (the sliders control a delay unit for each element).
+The volume levels for each element.
+
+*/
+
+
+
+knote = p4
+ivol = p5
+
+
+;------------------------
+
+;if &lt;harm&gt; is 0 then a random harmonic will be chosen
+
+
+if i(&lt;harm&gt;) == 0 then
+	inharm gauss 4   ;gaussian distribution, so values are usually around 4 harmonics
+
+	inharm = int(inharm)+4 ;scale  from -4 to +4 to give a range of 0 to 8 with the centre point being 4.
+else
+	inharm = i(&lt;harm&gt;)
+endif
+
+;-----------------------
+;kenv1 controls the amplitude levels. iinput determines how long the signal into streson lasts. This determines the 
+;attack period.
+
+iinput = rnd(0.007)
+iinput = 0.001+iinput
+kenv1 linseg ivol*0.2, iinput, 0, 0, 0
+
+; The foscil opcodes read from a simple sine function.
+
+
+
+
+asig buzz kenv1*&lt;buzz&gt;, knote, inharm, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;  ;choose a table
+asig2 oscil kenv1*&lt;sine&gt;, knote, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;
+asig3 foscil kenv1*&lt;fm1&gt;, knote, 1.1, 3, 200, gi_sine_1_&lt;INSTR_ID&gt;
+asig4 foscil kenv1*&lt;fm2&gt;, knote, 1, 20, 40, gi_sine_1_&lt;INSTR_ID&gt;
+
+
+;------------------------
+
+;The horizontal delay sliders on the interface determine the delay of each element.
+
+asig delay asig, (p3/10)*&lt;buzzdel&gt;
+asig2 delay asig2, (p3/10)*&lt;sinedel&gt;
+asig3 delay asig3, (p3/10)*&lt;fm1del&gt;
+asig4 delay asig4, (p3/10)*&lt;fm2del&gt;
+
+asig = (asig+asig2+asig3+asig4)*0.25
+
+;-----------------------
+/*
+an initial streson occurs here. Further on this signal is sent through two more stresons, one for the left speaker 
+and the other for the right. The resonance is determined by the volume level. Soft notes will have short resonances while loud notes
+will have longer resonance.
+*/
+
+
+ifdbk pow ivol, 0.005
+ares  streson asig, knote, ifdbk-0.001
+
+;--------------------------
+
+;idiff is the diffusion level. This determines the different level of feedback between the left and right streson (further below)
+idiff = i(&lt;diffuse&gt;)*0.2  ;a range of 0 to 0.2
+
+;determine if the left or right should gain precedence.
+irand_pan random 0, 1
+if irand_pan &gt;=0.5 then
+	ileft_diff = (0.8+idiff)-0.001 ;from 0.8 to 0.99999
+	iright_diff = 0.8
+else
+	ileft_diff = 0.8
+	iright_diff = (0.8+idiff)-0.001
+endif
+
+
+aresL streson ares, knote, ileft_diff
+aresR streson ares, knote, iright_diff
+
+;----------------------------------
+
+
+;Final stage applies a simple decay and scales accordingly.
+
+kenv2 linen ivol*0dbfs, 0, p3, 0.2
+
+iact active &lt;INSTR_ID&gt;
+iact = 1/iact
+icheck init iact
+kact = iact
+check:
+	icheck active &lt;INSTR_ID&gt;
+	icheck = 1/icheck
+	kact linseg iact, 0.001 , icheck, 0, icheck
+	reinit check
+	rireturn
+
+
+outs aresL*kenv2*kact, aresR*kenv2*kact
+
+</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>tablenum</objectName>
+            <x>369</x>
+            <y>100</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>1.0</resolution>
+            <value>5.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>false</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>diffuse</objectName>
+            <x>15</x>
+            <y>23</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.001</resolution>
+            <value>0.4679963</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>8</y>
+            <label>Stereo diffusion</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>378</x>
+            <y>83</y>
+            <label>Table</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>harm</objectName>
+            <x>221</x>
+            <y>22</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>20.0</maximum>
+            <resolution>1.0</resolution>
+            <value>9.000031</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>251</x>
+            <y>8</y>
+            <label>Harmonics (0 = random)</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>83</y>
+            <label>Delay time</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm2del</objectName>
+            <x>76</x>
+            <y>271</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>6.3009987</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm1del</objectName>
+            <x>76</x>
+            <y>216</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>3.8010182</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>sinedel</objectName>
+            <x>76</x>
+            <y>166</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.001</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>buzzdel</objectName>
+            <x>76</x>
+            <y>101</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>9.700981</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>87</x>
+            <y>83</y>
+            <label>as a proportion of p3</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>buzz</objectName>
+            <x>279</x>
+            <y>101</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.04519092</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>279</x>
+            <y>83</y>
+            <label>Levels</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>101</y>
+            <label>Buzz</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>sine</objectName>
+            <x>279</x>
+            <y>166</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.44870174</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm1</objectName>
+            <x>279</x>
+            <y>216</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.8299165</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm2</objectName>
+            <x>279</x>
+            <y>271</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.4803831</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>166</y>
+            <label>Sine</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>216</y>
+            <label>FM1</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>271</y>
+            <label>FM2</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1100777056' name='buzz' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.04519092'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.04519092'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777052' name='diffuse' label='' min='0.0' max='1.0' resolution='0.001' automationEnabled='false' value='0.4679963'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.001' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.4679963'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777060' name='fm1' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.8299165'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.8299165'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777062' name='fm2' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.4803831'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.4803831'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777054' name='harm' label='' min='0.0' max='20.0' resolution='1.0' automationEnabled='false' value='9.000031'>
+            <line name='' version='2' max='20.0' min='0.0' resolution='1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='9.000031'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777058' name='sine' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.44870174'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.44870174'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='3' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Streson</name>
+        <comment></comment>
+        <globalOrc>gi_tab_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+gi_tab_2_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 1, 1
+gi_tab_3_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 9, 1, 1, 0, 2, 1, 0.25, 3, 1, 0.5, 4, 1, 0, 5, 1, 0.25
+gi_tab_4_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 0, 0.5, 0, 0.3, 0, 0.15, 0, 0.075, 0, 0.037
+gi_tab_5_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 11, 1, 1, 1
+gi_tab_6_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 30, gi_tab_2_&lt;INSTR_ID&gt;,1.01, 8
+gi_tab_7_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, 0, 3, 0, 3, 0, 1
+gi_tab_8_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 3, 1, 1, 0, 0
+gi_tab_9_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, -3, 3, -15, 0, 25, 0, 0, 0, 0.2
+gi_tab_10_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 0.8, 0, 0.1, 0, 0, 1
+
+gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>
+/*
+
+Streson-Mix is an instrument that makes use of four audio-generation opcodes: buzz, oscil and two fm opcodes. 
+The output of these are mixed and input to a Streson opcode. Streson simulates the karplus-strong algorithm.
+
+The score p-fields are just pitch in hertz and volume in a range of 0 to 1.
+
+The interface controls are:
+
+The number of harmonics for the buzz opcode.
+The table number to read for the buzz and oscil opcodes.
+The stereo diffusion.
+The order the elements are input to the Streson opcode. (the sliders control a delay unit for each element).
+The volume levels for each element.
+
+*/
+
+
+
+knote = p4
+ivol = p5
+
+
+;------------------------
+
+;if &lt;harm&gt; is 0 then a random harmonic will be chosen
+
+
+if i(&lt;harm&gt;) == 0 then
+	inharm gauss 4   ;gaussian distribution, so values are usually around 4 harmonics
+
+	inharm = int(inharm)+4 ;scale  from -4 to +4 to give a range of 0 to 8 with the centre point being 4.
+else
+	inharm = i(&lt;harm&gt;)
+endif
+
+;-----------------------
+;kenv1 controls the amplitude levels. iinput determines how long the signal into streson lasts. This determines the 
+;attack period.
+
+iinput = rnd(0.007)
+iinput = 0.001+iinput
+kenv1 linseg ivol*0.2, iinput, 0, 0, 0
+
+; The foscil opcodes read from a simple sine function.
+
+
+
+
+asig buzz kenv1*&lt;buzz&gt;, knote, inharm, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;  ;choose a table
+asig2 oscil kenv1*&lt;sine&gt;, knote, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;
+asig3 foscil kenv1*&lt;fm1&gt;, knote, 1.1, 3, 200, gi_sine_1_&lt;INSTR_ID&gt;
+asig4 foscil kenv1*&lt;fm2&gt;, knote, 1, 20, 40, gi_sine_1_&lt;INSTR_ID&gt;
+
+
+;------------------------
+
+;The horizontal delay sliders on the interface determine the delay of each element.
+
+asig delay asig, (p3/10)*&lt;buzzdel&gt;
+asig2 delay asig2, (p3/10)*&lt;sinedel&gt;
+asig3 delay asig3, (p3/10)*&lt;fm1del&gt;
+asig4 delay asig4, (p3/10)*&lt;fm2del&gt;
+
+asig = (asig+asig2+asig3+asig4)*0.25
+
+;-----------------------
+/*
+an initial streson occurs here. Further on this signal is sent through two more stresons, one for the left speaker 
+and the other for the right. The resonance is determined by the volume level. Soft notes will have short resonances while loud notes
+will have longer resonance.
+*/
+
+
+ifdbk pow ivol, 0.005
+ares  streson asig, knote, ifdbk-0.001
+
+;--------------------------
+
+;idiff is the diffusion level. This determines the different level of feedback between the left and right streson (further below)
+idiff = i(&lt;diffuse&gt;)*0.2  ;a range of 0 to 0.2
+
+;determine if the left or right should gain precedence.
+irand_pan random 0, 1
+if irand_pan &gt;=0.5 then
+	ileft_diff = (0.8+idiff)-0.001 ;from 0.8 to 0.99999
+	iright_diff = 0.8
+else
+	ileft_diff = 0.8
+	iright_diff = (0.8+idiff)-0.001
+endif
+
+
+aresL streson ares, knote, ileft_diff
+aresR streson ares, knote, iright_diff
+
+;----------------------------------
+
+
+;Final stage applies a simple decay and scales accordingly.
+
+kenv2 linen ivol*0dbfs, 0, p3, 0.2
+
+iact active &lt;INSTR_ID&gt;
+iact = 1/iact
+icheck init iact
+kact = iact
+check:
+	icheck active &lt;INSTR_ID&gt;
+	icheck = 1/icheck
+	kact linseg iact, 0.001 , icheck, 0, icheck
+	reinit check
+	rireturn
+
+
+outs aresL*kenv2*kact, aresR*kenv2*kact
+
+</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>tablenum</objectName>
+            <x>369</x>
+            <y>100</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>1.0</resolution>
+            <value>9.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>false</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>diffuse</objectName>
+            <x>15</x>
+            <y>23</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.001</resolution>
+            <value>0.13800138</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>8</y>
+            <label>Stereo diffusion</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>378</x>
+            <y>83</y>
+            <label>Table</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>harm</objectName>
+            <x>221</x>
+            <y>22</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>20.0</maximum>
+            <resolution>1.0</resolution>
+            <value>18.999687</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>251</x>
+            <y>8</y>
+            <label>Harmonics (0 = random)</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>83</y>
+            <label>Delay time</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm2del</objectName>
+            <x>76</x>
+            <y>271</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>8.601042</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm1del</objectName>
+            <x>76</x>
+            <y>216</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>5.2009516</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>sinedel</objectName>
+            <x>76</x>
+            <y>166</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>7.300992</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>buzzdel</objectName>
+            <x>76</x>
+            <y>101</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.001</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>87</x>
+            <y>83</y>
+            <label>as a proportion of p3</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>buzz</objectName>
+            <x>279</x>
+            <y>101</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.70234686</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>279</x>
+            <y>83</y>
+            <label>Levels</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>101</y>
+            <label>Buzz</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>sine</objectName>
+            <x>279</x>
+            <y>166</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.86124235</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm1</objectName>
+            <x>279</x>
+            <y>216</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.11667579</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm2</objectName>
+            <x>279</x>
+            <y>271</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.25697955</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>166</y>
+            <label>Sine</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>216</y>
+            <label>FM1</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>271</y>
+            <label>FM2</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1100777070' name='buzz' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.70234686'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.70234686'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777066' name='diffuse' label='' min='0.0' max='1.0' resolution='0.001' automationEnabled='false' value='0.13800138'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.001' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.13800138'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777074' name='fm1' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.11667579'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.11667579'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777076' name='fm2' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.25697955'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.25697955'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777068' name='harm' label='' min='0.0' max='20.0' resolution='1.0' automationEnabled='false' value='18.999687'>
+            <line name='' version='2' max='20.0' min='0.0' resolution='1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='18.999687'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777072' name='sine' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.86124235'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.86124235'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='4' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Streson</name>
+        <comment></comment>
+        <globalOrc>gi_tab_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+gi_tab_2_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 1, 1
+gi_tab_3_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 9, 1, 1, 0, 2, 1, 0.25, 3, 1, 0.5, 4, 1, 0, 5, 1, 0.25
+gi_tab_4_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 0, 0.5, 0, 0.3, 0, 0.15, 0, 0.075, 0, 0.037
+gi_tab_5_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 11, 1, 1, 1
+gi_tab_6_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 30, gi_tab_2_&lt;INSTR_ID&gt;,1.01, 8
+gi_tab_7_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, 0, 3, 0, 3, 0, 1
+gi_tab_8_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 3, 1, 1, 0, 0
+gi_tab_9_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 1, -3, 3, -15, 0, 25, 0, 0, 0, 0.2
+gi_tab_10_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 13, 1, 0.8, 0, 0.1, 0, 0, 1
+
+gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>
+/*
+
+Streson-Mix is an instrument that makes use of four audio-generation opcodes: buzz, oscil and two fm opcodes. 
+The output of these are mixed and input to a Streson opcode. Streson simulates the karplus-strong algorithm.
+
+The score p-fields are just pitch in hertz and volume in a range of 0 to 1.
+
+The interface controls are:
+
+The number of harmonics for the buzz opcode.
+The table number to read for the buzz and oscil opcodes.
+The stereo diffusion.
+The order the elements are input to the Streson opcode. (the sliders control a delay unit for each element).
+The volume levels for each element.
+
+*/
+
+
+
+knote = p4
+ivol = p5
+
+
+;------------------------
+
+;if &lt;harm&gt; is 0 then a random harmonic will be chosen
+
+
+if i(&lt;harm&gt;) == 0 then
+	inharm gauss 4   ;gaussian distribution, so values are usually around 4 harmonics
+
+	inharm = int(inharm)+4 ;scale  from -4 to +4 to give a range of 0 to 8 with the centre point being 4.
+else
+	inharm = i(&lt;harm&gt;)
+endif
+
+;-----------------------
+;kenv1 controls the amplitude levels. iinput determines how long the signal into streson lasts. This determines the 
+;attack period.
+
+iinput = rnd(0.007)
+iinput = 0.001+iinput
+kenv1 linseg ivol*0.2, iinput, 0, 0, 0
+
+; The foscil opcodes read from a simple sine function.
+
+
+
+
+asig buzz kenv1*&lt;buzz&gt;, knote, inharm, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;  ;choose a table
+asig2 oscil kenv1*&lt;sine&gt;, knote, gi_tab_&lt;tablenum&gt;_&lt;INSTR_ID&gt;
+asig3 foscil kenv1*&lt;fm1&gt;, knote, 1.1, 3, 200, gi_sine_1_&lt;INSTR_ID&gt;
+asig4 foscil kenv1*&lt;fm2&gt;, knote, 1, 20, 40, gi_sine_1_&lt;INSTR_ID&gt;
+
+
+;------------------------
+
+;The horizontal delay sliders on the interface determine the delay of each element.
+
+asig delay asig, (p3/10)*&lt;buzzdel&gt;
+asig2 delay asig2, (p3/10)*&lt;sinedel&gt;
+asig3 delay asig3, (p3/10)*&lt;fm1del&gt;
+asig4 delay asig4, (p3/10)*&lt;fm2del&gt;
+
+asig = (asig+asig2+asig3+asig4)*0.25
+
+;-----------------------
+/*
+an initial streson occurs here. Further on this signal is sent through two more stresons, one for the left speaker 
+and the other for the right. The resonance is determined by the volume level. Soft notes will have short resonances while loud notes
+will have longer resonance.
+*/
+
+
+ifdbk pow ivol, 0.005
+ares  streson asig, knote, ifdbk-0.001
+
+;--------------------------
+
+;idiff is the diffusion level. This determines the different level of feedback between the left and right streson (further below)
+idiff = i(&lt;diffuse&gt;)*0.2  ;a range of 0 to 0.2
+
+;determine if the left or right should gain precedence.
+irand_pan random 0, 1
+if irand_pan &gt;=0.5 then
+	ileft_diff = (0.8+idiff)-0.001 ;from 0.8 to 0.99999
+	iright_diff = 0.8
+else
+	ileft_diff = 0.8
+	iright_diff = (0.8+idiff)-0.001
+endif
+
+
+aresL streson ares, knote, ileft_diff
+aresR streson ares, knote, iright_diff
+
+;----------------------------------
+
+
+;Final stage applies a simple decay and scales accordingly.
+
+kenv2 linen ivol*0dbfs, 0, p3, 0.2
+
+iact active &lt;INSTR_ID&gt;
+iact = 1/iact
+icheck init iact
+kact = iact
+check:
+	icheck active &lt;INSTR_ID&gt;
+	icheck = 1/icheck
+	kact linseg iact, 0.001 , icheck, 0, icheck
+	reinit check
+	rireturn
+
+
+outs aresL*kenv2*kact, aresR*kenv2*kact
+
+</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>tablenum</objectName>
+            <x>369</x>
+            <y>100</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>1.0</resolution>
+            <value>3.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>false</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>diffuse</objectName>
+            <x>15</x>
+            <y>23</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.001</resolution>
+            <value>0.74999523</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>8</y>
+            <label>Stereo diffusion</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>378</x>
+            <y>83</y>
+            <label>Table</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>harm</objectName>
+            <x>221</x>
+            <y>22</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>20.0</maximum>
+            <resolution>1.0</resolution>
+            <value>4.9999647</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>251</x>
+            <y>8</y>
+            <label>Harmonics (0 = random)</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>83</y>
+            <label>Delay time</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm2del</objectName>
+            <x>76</x>
+            <y>271</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.001</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>fm1del</objectName>
+            <x>76</x>
+            <y>216</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>3.7010276</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>sinedel</objectName>
+            <x>76</x>
+            <y>166</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>5.9009576</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>buzzdel</objectName>
+            <x>76</x>
+            <y>101</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.001</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.1</resolution>
+            <value>4.1009974</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>87</x>
+            <y>83</y>
+            <label>as a proportion of p3</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>buzz</objectName>
+            <x>279</x>
+            <y>101</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.8625429</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>279</x>
+            <y>83</y>
+            <label>Levels</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>101</y>
+            <label>Buzz</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>sine</objectName>
+            <x>279</x>
+            <y>166</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.6563787</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm1</objectName>
+            <x>279</x>
+            <y>216</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.54125595</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>fm2</objectName>
+            <x>279</x>
+            <y>271</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <value>0.47388145</value>
+            <knobWidth>40</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>166</y>
+            <label>Sine</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>216</y>
+            <label>FM1</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>271</y>
+            <label>FM2</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1100777084' name='buzz' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.8625429'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.8625429'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777080' name='diffuse' label='' min='0.0' max='1.0' resolution='0.001' automationEnabled='false' value='0.74999523'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.001' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.74999523'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777088' name='fm1' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.54125595'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.54125595'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777090' name='fm2' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.47388145'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.47388145'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777082' name='harm' label='' min='0.0' max='20.0' resolution='1.0' automationEnabled='false' value='4.9999647'>
+            <line name='' version='2' max='20.0' min='0.0' resolution='1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='4.9999647'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100777086' name='sine' label='' min='0.0' max='1.0' resolution='-1.0' automationEnabled='false' value='0.6563787'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.6563787'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+  </arrangement>
+  <mixer>
+    <enabled>false</enabled>
+    <extraRenderTime>0.0</extraRenderTime>
+    <channelList list='channels'>
+      <channel>
+        <name>1</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='-546322599' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>2</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1100777064' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>3</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1100777078' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>4</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1100777092' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+    </channelList>
+    <channelList list='subChannels'/>
+    <channel>
+      <name>Master</name>
+      <outChannel>Master</outChannel>
+      <level>0.0</level>
+      <muted>false</muted>
+      <solo>false</solo>
+      <effectsChain bin='pre'/>
+      <effectsChain bin='post'/>
+      <parameter uniqueId='-546322614' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+        <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+          <linePoint x='0.0' y='0.0'/>
+        </line>
+      </parameter>
+    </channel>
+  </mixer>
+  <tables></tables>
+  <soundObjectLibrary/>
+  <globalOrcSco>
+    <globalOrc></globalOrc>
+    <globalSco></globalSco>
+  </globalOrcSco>
+  <opcodeList/>
+  <liveData>
+    <commandLine>csound -Wdo devaudio -L stdin</commandLine>
+    <commandLineEnabled>false</commandLineEnabled>
+    <commandLineOverride>false</commandLineOverride>
+  </liveData>
+  <soundObject type='blue.soundObject.PolyObject'>
+    <subjectiveDuration>2.0</subjectiveDuration>
+    <startTime>0.0</startTime>
+    <name>root</name>
+    <backgroundColor>-10066279</backgroundColor>
+    <timeBehavior>0</timeBehavior>
+    <noteProcessorChain/>
+    <isRoot>true</isRoot>
+    <pixelSecond>32</pixelSecond>
+    <defaultHeightIndex>0</defaultHeightIndex>
+    <snapEnabled>false</snapEnabled>
+    <snapValue>1.0</snapValue>
+    <timeDisplay>0</timeDisplay>
+    <timeUnit>5</timeUnit>
+    <soundLayer name='' muted='false' solo='false' heightIndex='6'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>0.859375</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-39424</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 0.5 440 0.8
+i1 + . 356 0.8
+i1 + . 356 0.8
+i1 + . 356 0.8
+i1 + . 356 0.8</score>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>5.25</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-39424</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [25, 50, 100, 150, 175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+	score += &quot;i1 %d 2 %d 0.4 \n&quot;% (n*1, list[i]*r)
+	n += 1</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>7.40625</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-39424</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [25, 50, 100, 150, 175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+	score += &quot;i1 %d 2 %d 0.4 \n&quot;% (n*1, list[i]*r)
+	n += 1</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>3.203125</startTime>
+        <name>Play-list</name>
+        <backgroundColor>-39424</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <code>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+
+	
+	score += &quot;i1 %f 2 %f 0.4 \n&quot;% (n*&lt;packing&gt;, list[i]*r)
+	n += 1</code>
+        <commandLine/>
+        <isExternal>false</isExternal>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>packing</objectName>
+            <x>81</x>
+            <y>55</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.25</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+        </graphicInterface>
+        <presetGroup name='Presets'/>
+        <syntaxType>Python</syntaxType>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.0</subjectiveDuration>
+        <startTime>23.34375</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-39424</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 2 200 1
+i1 0 . 320 1
+i1 0 . 440 1
+i1 + . 800 1</score>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>4.3125</subjectiveDuration>
+        <startTime>9.3125</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-26266</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [25, 50, 100, 150, 175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+	score += &quot;i2 %d 2 %d 0.4 \n&quot;% (n*1, list[i]*r)
+	n += 1</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.0</subjectiveDuration>
+        <startTime>24.34375</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-26266</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i2 0 2 200 1
+i2 0 . 320 1
+i2 0 . 440 1
+i2 + . 800 1</score>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>13.46875</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-3394816</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [25, 50, 100, 150, 175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+	score += &quot;i3 %d 2 %d 0.4 \n&quot;% (n*1, list[i]*r)
+	n += 1</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>3.125</subjectiveDuration>
+        <startTime>15.625</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-3394816</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [25, 50, 100, 150, 175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+	score += &quot;i3 %d 2 %d 0.6 \n&quot;% (n*1, (list[i]*r)*(r*2))
+	n += 1</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>3.125</subjectiveDuration>
+        <startTime>19.0625</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-3394816</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [25, 50, 100, 150, 175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+	score += &quot;i3 %d 2 %d 0.8 \n&quot;% (n*1, list[i]*r)
+	n += 1</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.0</subjectiveDuration>
+        <startTime>25.34375</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-3394816</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i3 0 2 200 1
+i3 0 . 320 1
+i3 0 . 440 1
+i3 + . 800 1</score>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+        <subjectiveDuration>2.84375</subjectiveDuration>
+        <startTime>21.3125</startTime>
+        <name>Play-list</name>
+        <backgroundColor>-6711040</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <code>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+
+	
+	score += &quot;i4 %f 2 %f 0.4 \n&quot;% (n*&lt;packing&gt;, list[i]*r)
+	n += 1</code>
+        <commandLine/>
+        <isExternal>false</isExternal>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>packing</objectName>
+            <x>81</x>
+            <y>55</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.48999998</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+        </graphicInterface>
+        <presetGroup name='Presets'/>
+        <syntaxType>Python</syntaxType>
+      </soundObject>
+      <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+        <subjectiveDuration>2.84375</subjectiveDuration>
+        <startTime>14.75</startTime>
+        <name>Play-list</name>
+        <backgroundColor>-6711040</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <code>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+
+	
+	score += &quot;i4 %f 2 %f 0.4 \n&quot;% (n*&lt;packing&gt;, list[i]*r)
+	n += 1</code>
+        <commandLine/>
+        <isExternal>false</isExternal>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>packing</objectName>
+            <x>81</x>
+            <y>55</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.48999998</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+        </graphicInterface>
+        <presetGroup name='Presets'/>
+        <syntaxType>Python</syntaxType>
+      </soundObject>
+      <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+        <subjectiveDuration>2.84375</subjectiveDuration>
+        <startTime>18.1875</startTime>
+        <name>Play-list</name>
+        <backgroundColor>-6711040</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <code>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+import random
+
+list = [175, 300, 400, 440, 800, 200, 225, 250, 880, 1000, 1200, 5000, 2000, 1000, 3000, 500, 200, 100, 50]
+lsize = len(list)
+n = 0
+
+for i in range(0, lsize):
+	r = random.random()
+	r += 0.5
+
+	
+	score += &quot;i4 %f 2 %f 0.4 \n&quot;% (n*&lt;packing&gt;, list[i]*r)
+	n += 1</code>
+        <commandLine/>
+        <isExternal>false</isExternal>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>packing</objectName>
+            <x>81</x>
+            <y>55</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.48999998</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+        </graphicInterface>
+        <presetGroup name='Presets'/>
+        <syntaxType>Python</syntaxType>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.0</subjectiveDuration>
+        <startTime>26.46875</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-6711040</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i4 0 2 200 1
+i4 0 . 320 1
+i4 0 . 440 1
+i4 + . 800 1</score>
+      </soundObject>
+    </soundLayer>
+  </soundObject>
+  <scratchPadData>
+    <isWordWrapEnabled>true</isWordWrapEnabled>
+    <scratchText>i1 + . 200 1 20</scratchText>
+  </scratchPadData>
+  <noteProcessorChainMap/>
+  <renderStartTime>0.0</renderStartTime>
+  <renderEndTime>32.25</renderEndTime>
+  <markersList/>
+  <loopRendering>true</loopRendering>
+  <tempo>
+    <enabled>false</enabled>
+    <visible>false</visible>
+    <line name='' version='2' max='240.0' min='30.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+      <linePoint x='0.0' y='60.0'/>
+    </line>
+  </tempo>
+  <midiInputProcessor>
+    <keyMapping>PCH</keyMapping>
+    <velMapping>MIDI</velMapping>
+    <pitchConstant/>
+    <ampConstant/>
+    <scale>
+      <scaleName>12TET</scaleName>
+      <baseFrequency>261.62558</baseFrequency>
+      <octave>2.0</octave>
+      <ratios>
+        <ratio>1.0</ratio>
+        <ratio>1.0594631</ratio>
+        <ratio>1.122462</ratio>
+        <ratio>1.1892071</ratio>
+        <ratio>1.2599211</ratio>
+        <ratio>1.3348398</ratio>
+        <ratio>1.4142135</ratio>
+        <ratio>1.4983071</ratio>
+        <ratio>1.587401</ratio>
+        <ratio>1.6817929</ratio>
+        <ratio>1.7817974</ratio>
+        <ratio>1.8877486</ratio>
+      </ratios>
+    </scale>
+  </midiInputProcessor>
+</blueData>

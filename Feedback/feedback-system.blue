@@ -1,0 +1,1435 @@
+<blueData version='2.1.9'>
+  <projectProperties>
+    <title></title>
+    <author></author>
+    <notes></notes>
+    <sampleRate>44100</sampleRate>
+    <ksmps>1</ksmps>
+    <channels>2</channels>
+    <diskSampleRate>44100</diskSampleRate>
+    <diskKsmps>1</diskKsmps>
+    <diskChannels>2</diskChannels>
+    <useAudioOut>true</useAudioOut>
+    <useAudioIn>false</useAudioIn>
+    <useMidiIn>false</useMidiIn>
+    <useMidiOut>false</useMidiOut>
+    <noteAmpsEnabled>true</noteAmpsEnabled>
+    <outOfRangeEnabled>true</outOfRangeEnabled>
+    <warningsEnabled>true</warningsEnabled>
+    <benchmarkEnabled>true</benchmarkEnabled>
+    <advancedSettings></advancedSettings>
+    <completeOverride>false</completeOverride>
+    <fileName></fileName>
+    <askOnRender>false</askOnRender>
+    <diskNoteAmpsEnabled>true</diskNoteAmpsEnabled>
+    <diskOutOfRangeEnabled>true</diskOutOfRangeEnabled>
+    <diskWarningsEnabled>true</diskWarningsEnabled>
+    <diskBenchmarkEnabled>true</diskBenchmarkEnabled>
+    <diskAdvancedSettings></diskAdvancedSettings>
+    <diskCompleteOverride>false</diskCompleteOverride>
+    <diskAlwaysRenderEntireProject>false</diskAlwaysRenderEntireProject>
+    <csladspaSettings>
+      <name/>
+      <maker/>
+      <uniqueId>0</uniqueId>
+      <copyright/>
+      <portDefinitionList/>
+      <enabled>false</enabled>
+    </csladspaSettings>
+  </projectProperties>
+  <arrangement>
+    <instrumentAssignment arrangementId='1' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Feedback-system-1</name>
+        <comment></comment>
+        <globalOrc>gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+This final instrument is the result of an experiment with sequential feedback systems. 
+There is an input source into four sequential iir delay units.
+I desired this to be highly unpreditable and chaotic...I believe that these demands have certainly been met!
+
+
+
+;------------------------
+   
+
+The buzz opcode serves as the input source to the system. A random number of harmonics between 20 and 30 is chosen. 
+This has an effect on the overall brightness. The frequency of the buzz object is set to be extremely low. 
+This has the effect of an overall tremolo and also is a large factor in the final spectrum.
+
+*/
+
+   
+
+  iharm random 20, 30
+  iharm = int(iharm)
+  asource  buzz      1, 1/p3*(&lt;speed&lt;INSTR_ID&gt;&gt;*&lt;mult&lt;INSTR_ID&gt;&gt;), iharm, gi_sine_1_&lt;INSTR_ID&gt;
+
+;--------------------------------------
+
+;kinput_length will determine the length of the source input. It can range from a small grain to continuous input.
+;The longer the input the more chaotic the system will be.
+  kinput_length linseg 1, p3/&lt;source-length&lt;INSTR_ID&gt;&gt;, 1, 0, 0, 0, 0
+  asource = asource*kinput_length
+;--------------------------------------
+;The most dangerous aspect is of course the feedback level, here it is set to always be between 0 and 0.999. 
+
+  kres pow &lt;res&lt;INSTR_ID&gt;&gt;, &lt;shape&lt;INSTR_ID&gt;&gt; ;&lt;shape&gt; will bias the input from  &lt;res&gt; to lean towards higher or lower feedback
+  kpitch = 1/&lt;pitch&lt;INSTR_ID&gt;&gt; ;this sets the delay time
+  kaccum = &lt;accum&lt;INSTR_ID&gt;&gt; ;kaccum is multiplied by kpitch after every delay unit.
+
+;--------------------------
+
+;the ktime oscillator is used to vary the pitch over the course of the note.
+
+ktime oscili 0.5, 1/p3, gi_sine_1_&lt;INSTR_ID&gt;, 0
+ktime = ktime+0.5
+
+;--------------------------
+
+
+ktime1 = (ktime*kpitch*0.5)+kpitch*0.5
+adump delayr 1                    
+	amove deltapi ktime1              
+delayw asource+(amove*kres)   
+  
+
+;-------------------------
+kpitch = kpitch*kaccum
+ktime2 = (ktime*kpitch)+kpitch
+adump2 delayr 1
+	amove2 deltapi ktime2
+delayw asource+(amove2*kres)
+
+;-----------------------
+amove = amove+amove2
+;-----------------------
+
+kpitch = kpitch*kaccum
+ktime3 = (ktime*kpitch)+kpitch
+adump3 delayr 1
+	amove3 deltapi ktime3
+delayw amove+(amove3*kres)
+
+;--------------------
+amove = amove+amove3
+;---------------------
+
+kpitch = kpitch*kaccum
+ktime4 = (ktime*kpitch)+kpitch
+adump4 delayr 1
+	amove4 deltapi ktime4
+delayw amove+(amove4*kres)
+
+;-------------------
+amove = amove+amove4
+;--------------------
+
+; atone is used to normalise the large amounts of DC offset that can occur
+amove atone amove, 50
+;balance to secure a usable level.
+abal oscil 0dbfs*0.25, 100, gi_sine_1_&lt;INSTR_ID&gt;
+amove balance amove, abal
+
+;a clip just in case
+amove clip amove, 1, 0dbfs
+
+; and a final envelope
+kenv linen 1, 0.4, p3, 0.4
+
+
+blueMixerOut amove*kenv, amove*kenv</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>speed&lt;INSTR_ID&gt;</objectName>
+            <x>207</x>
+            <y>76</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.7000005</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>mult&lt;INSTR_ID&gt;</objectName>
+            <x>212</x>
+            <y>106</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <resolution>0.1</resolution>
+            <value>122.69711</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>227</x>
+            <y>66</y>
+            <label>Add+Mult speed</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>source-length&lt;INSTR_ID&gt;</objectName>
+            <x>316</x>
+            <y>165</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>50.0</maximum>
+            <resolution>0.1</resolution>
+            <value>1.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>res&lt;INSTR_ID&gt;</objectName>
+            <x>40</x>
+            <y>196</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>0.999</maximum>
+            <resolution>0.001</resolution>
+            <value>0.47945884</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>shape&lt;INSTR_ID&gt;</objectName>
+            <x>32</x>
+            <y>228</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>2.0</maximum>
+            <resolution>0.1</resolution>
+            <value>1.6999536</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>41</x>
+            <y>166</y>
+            <label>Res lvl + bias</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>accum&lt;INSTR_ID&gt;</objectName>
+            <x>73</x>
+            <y>40</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.25</minimum>
+            <maximum>2.0</maximum>
+            <value>1.6433684</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>pitch&lt;INSTR_ID&gt;</objectName>
+            <x>156</x>
+            <y>31</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <value>89.03914</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>16</y>
+            <label>Pitch stack</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>165</x>
+            <y>15</y>
+            <label>Del Pitch</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>231</x>
+            <y>147</y>
+            <label>Input-length as a proportion of P3</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1009465165' name='accum&lt;INSTR_ID&gt;' label='' min='0.25' max='2.0' resolution='-1.0' automationEnabled='true' value='1.6433684'>
+            <line name='' version='2' max='2.0' min='0.25' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6433684'/>
+              <linePoint x='0.3125' y='1.568897'/>
+              <linePoint x='0.625' y='1.0371182'/>
+              <linePoint x='0.75' y='0.7908599'/>
+              <linePoint x='1.9375' y='1.6634614'/>
+              <linePoint x='3.5' y='1.5769982'/>
+              <linePoint x='4.5833335' y='0.3277673'/>
+              <linePoint x='4.75' y='0.25625926'/>
+              <linePoint x='4.8333335' y='1.8010176'/>
+              <linePoint x='5.05' y='1.800668'/>
+              <linePoint x='5.1' y='1.6193112'/>
+              <linePoint x='5.5625' y='0.65384614'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151262' name='mult&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='0.1' automationEnabled='false' value='122.69711'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='0.1' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='200.0'/>
+              <linePoint x='1.6269532' y='194.90001'/>
+              <linePoint x='3.746094' y='338.5'/>
+              <linePoint x='4.498047' y='82.1'/>
+              <linePoint x='4.75' y='386.80414'/>
+              <linePoint x='6.138671' y='51.3'/>
+              <linePoint x='8.531249' y='71.8'/>
+              <linePoint x='9.95' y='148.7'/>
+              <linePoint x='11.607423' y='323.1'/>
+              <linePoint x='12.645833' y='302.6'/>
+              <linePoint x='13.135417' y='112.8'/>
+              <linePoint x='16.25' y='107.700005'/>
+              <linePoint x='17.35' y='184.6'/>
+              <linePoint x='19.25' y='359.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1009465225' name='pitch&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='-1.0' automationEnabled='false' value='89.03914'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='266.61136'/>
+              <linePoint x='3.8' y='276.7441'/>
+              <linePoint x='4.45' y='256.41028'/>
+              <linePoint x='4.75' y='153.84615'/>
+              <linePoint x='13.8' y='97.435905'/>
+              <linePoint x='14.3' y='241.02563'/>
+              <linePoint x='20.3' y='169.23077'/>
+              <linePoint x='24.0' y='112.8205'/>
+              <linePoint x='30.75' y='312.8205'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151268' name='res&lt;INSTR_ID&gt;' label='' min='0.0' max='0.999' resolution='0.001' automationEnabled='false' value='0.47945884'>
+            <line name='' version='2' max='0.999' min='0.0' resolution='0.001' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.36'/>
+              <linePoint x='3.5' y='0.6709999'/>
+              <linePoint x='4.5833335' y='0.42199653'/>
+              <linePoint x='4.8333335' y='0.90300006'/>
+              <linePoint x='4.9383802' y='0.256'/>
+              <linePoint x='5.012324' y='0.9470004'/>
+              <linePoint x='5.0616198' y='0.282'/>
+              <linePoint x='20.171303' y='0.231'/>
+              <linePoint x='20.798954' y='0.98600006'/>
+              <linePoint x='38.686893' y='0.999'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151266' name='shape&lt;INSTR_ID&gt;' label='' min='0.0' max='2.0' resolution='0.1' automationEnabled='false' value='1.6999536'>
+            <line name='' version='2' max='2.0' min='0.0' resolution='0.1' color='-23296' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6'/>
+              <linePoint x='1.6269532' y='1.6'/>
+              <linePoint x='4.4296875' y='0.5'/>
+              <linePoint x='6.890626' y='1.6'/>
+              <linePoint x='7.7792964' y='0.1'/>
+              <linePoint x='12.125' y='0.1'/>
+              <linePoint x='12.760417' y='0.90000004'/>
+              <linePoint x='13.166667' y='1.2'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151260' name='speed&lt;INSTR_ID&gt;' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.7000005'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.7'/>
+              <linePoint x='4.75' y='0.8999951'/>
+              <linePoint x='5.7' y='0.7'/>
+              <linePoint x='7.25' y='0.6'/>
+              <linePoint x='13.4' y='0.2'/>
+              <linePoint x='16.85' y='1.0'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='2' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Feedback-system-2</name>
+        <comment></comment>
+        <globalOrc>gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+This final instrument is the result of an experiment with sequential feedback systems. 
+There is an input source into four sequential iir delay units.
+I desired this to be highly unpreditable and chaotic...I believe that these demands have certainly been met!
+
+
+
+;------------------------
+   
+
+The buzz opcode serves as the input source to the system. A random number of harmonics between 20 and 30 is chosen. 
+This has an effect on the overall brightness. The frequency of the buzz object is set to be extremely low. 
+This has the effect of an overall tremolo and also is a large factor in the final spectrum.
+
+*/
+
+   
+
+  iharm random 20, 30
+  iharm = int(iharm)
+  asource  buzz      1, 1/p3*(&lt;speed&lt;INSTR_ID&gt;&gt;*&lt;mult&lt;INSTR_ID&gt;&gt;), iharm, gi_sine_1_&lt;INSTR_ID&gt;
+
+;--------------------------------------
+
+;kinput_length will determine the length of the source input. It can range from a small grain to continuous input.
+;The longer the input the more chaotic the system will be.
+  kinput_length linseg 1, p3/&lt;source-length&lt;INSTR_ID&gt;&gt;, 1, 0, 0, 0, 0
+  asource = asource*kinput_length
+;--------------------------------------
+;The most dangerous aspect is of course the feedback level, here it is set to always be between 0 and 0.999. 
+
+  kres pow &lt;res&lt;INSTR_ID&gt;&gt;, &lt;shape&lt;INSTR_ID&gt;&gt; ;&lt;shape&gt; will bias the input from  &lt;res&gt; to lean towards higher or lower feedback
+  kpitch = 1/&lt;pitch&lt;INSTR_ID&gt;&gt; ;this sets the delay time
+  kaccum = &lt;accum&lt;INSTR_ID&gt;&gt; ;kaccum is multiplied by kpitch after every delay unit.
+
+;--------------------------
+
+;the ktime oscillator is used to vary the pitch over the course of the note.
+
+ktime oscili 0.5, 1/p3, gi_sine_1_&lt;INSTR_ID&gt;, 0
+ktime = ktime+0.5
+
+;--------------------------
+
+
+ktime1 = (ktime*kpitch*0.5)+kpitch*0.5
+adump delayr 1                    
+	amove deltapi ktime1              
+delayw asource+(amove*kres)   
+  
+
+;-------------------------
+kpitch = kpitch*kaccum
+ktime2 = (ktime*kpitch)+kpitch
+adump2 delayr 1
+	amove2 deltapi ktime2
+delayw asource+(amove2*kres)
+
+;-----------------------
+amove = amove+amove2
+;-----------------------
+
+kpitch = kpitch*kaccum
+ktime3 = (ktime*kpitch)+kpitch
+adump3 delayr 1
+	amove3 deltapi ktime3
+delayw amove+(amove3*kres)
+
+;--------------------
+amove = amove+amove3
+;---------------------
+
+kpitch = kpitch*kaccum
+ktime4 = (ktime*kpitch)+kpitch
+adump4 delayr 1
+	amove4 deltapi ktime4
+delayw amove+(amove4*kres)
+
+;-------------------
+amove = amove+amove4
+;--------------------
+
+; atone is used to normalise the large amounts of DC offset that can occur
+amove atone amove, 50
+;balance to secure a usable level.
+abal oscil 0dbfs*0.25, 100, gi_sine_1_&lt;INSTR_ID&gt;
+amove balance amove, abal
+
+;a clip just in case
+amove clip amove, 1, 0dbfs
+
+; and a final envelope
+kenv linen 1, 0.4, p3, 0.4
+
+
+blueMixerOut amove*kenv, amove*kenv</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>speed&lt;INSTR_ID&gt;</objectName>
+            <x>207</x>
+            <y>76</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.5000015</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>mult&lt;INSTR_ID&gt;</objectName>
+            <x>212</x>
+            <y>106</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <resolution>0.1</resolution>
+            <value>84.800415</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>227</x>
+            <y>66</y>
+            <label>Add+Mult speed</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>source-length&lt;INSTR_ID&gt;</objectName>
+            <x>316</x>
+            <y>165</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>50.0</maximum>
+            <resolution>0.1</resolution>
+            <value>29.200085</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>res&lt;INSTR_ID&gt;</objectName>
+            <x>40</x>
+            <y>196</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>0.999</maximum>
+            <resolution>0.001</resolution>
+            <value>0.73499733</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>shape&lt;INSTR_ID&gt;</objectName>
+            <x>32</x>
+            <y>228</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>2.0</maximum>
+            <resolution>0.1</resolution>
+            <value>1.299986</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>41</x>
+            <y>166</y>
+            <label>Res lvl + bias</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>accum&lt;INSTR_ID&gt;</objectName>
+            <x>73</x>
+            <y>40</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.25</minimum>
+            <maximum>2.0</maximum>
+            <value>1.6433684</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>pitch&lt;INSTR_ID&gt;</objectName>
+            <x>156</x>
+            <y>31</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <value>161.68822</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>16</y>
+            <label>Pitch stack</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>165</x>
+            <y>15</y>
+            <label>Del Pitch</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>231</x>
+            <y>147</y>
+            <label>Input-length as a proportion of P3</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1009465165' name='accum&lt;INSTR_ID&gt;' label='' min='0.25' max='2.0' resolution='-1.0' automationEnabled='true' value='1.6433684'>
+            <line name='' version='2' max='2.0' min='0.25' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6433684'/>
+              <linePoint x='0.75' y='0.7908599'/>
+              <linePoint x='1.9375' y='1.6634614'/>
+              <linePoint x='5.5625' y='0.65384614'/>
+              <linePoint x='15.916667' y='1.1340933'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151262' name='mult&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='0.1' automationEnabled='false' value='84.800415'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='0.1' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='200.0'/>
+              <linePoint x='1.6269532' y='194.90001'/>
+              <linePoint x='3.746094' y='338.5'/>
+              <linePoint x='4.498047' y='82.1'/>
+              <linePoint x='5.8652353' y='348.7'/>
+              <linePoint x='6.138671' y='51.3'/>
+              <linePoint x='8.531249' y='71.8'/>
+              <linePoint x='8.873046' y='348.7'/>
+              <linePoint x='10.787109' y='328.2'/>
+              <linePoint x='11.607423' y='323.1'/>
+              <linePoint x='12.645833' y='302.6'/>
+              <linePoint x='13.135417' y='112.8'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1009465225' name='pitch&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='-1.0' automationEnabled='false' value='161.68822'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='266.61136'/>
+              <linePoint x='0.25' y='149.64293'/>
+              <linePoint x='1.6196429' y='266.66666'/>
+              <linePoint x='2.5625' y='189.74359'/>
+              <linePoint x='3.7803571' y='179.48718'/>
+              <linePoint x='4.2517858' y='143.58974'/>
+              <linePoint x='4.958928' y='97.435905'/>
+              <linePoint x='6.4517856' y='82.05128'/>
+              <linePoint x='7.669643' y='353.84613'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151268' name='res&lt;INSTR_ID&gt;' label='' min='0.0' max='0.999' resolution='0.001' automationEnabled='false' value='0.73499733'>
+            <line name='' version='2' max='0.999' min='0.0' resolution='0.001' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.36'/>
+              <linePoint x='1.2851564' y='0.333'/>
+              <linePoint x='3.1308591' y='0.448'/>
+              <linePoint x='3.746094' y='0.15400001'/>
+              <linePoint x='4.6347656' y='0.92200005'/>
+              <linePoint x='5.5917974' y='0.179'/>
+              <linePoint x='6.890626' y='0.564'/>
+              <linePoint x='9.214843' y='0.87100005'/>
+              <linePoint x='12.635416' y='0.141'/>
+              <linePoint x='12.875' y='0.115'/>
+              <linePoint x='13.083333' y='0.41000003'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151266' name='shape&lt;INSTR_ID&gt;' label='' min='0.0' max='2.0' resolution='0.1' automationEnabled='false' value='1.299986'>
+            <line name='' version='2' max='2.0' min='0.0' resolution='0.1' color='-23296' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6'/>
+              <linePoint x='1.6269532' y='1.6'/>
+              <linePoint x='4.4296875' y='0.5'/>
+              <linePoint x='6.890626' y='1.6'/>
+              <linePoint x='7.7792964' y='0.1'/>
+              <linePoint x='12.125' y='0.1'/>
+              <linePoint x='12.760417' y='0.90000004'/>
+              <linePoint x='13.166667' y='1.2'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151260' name='speed&lt;INSTR_ID&gt;' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.5000015'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.5000015'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='3' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Feedback-system-3</name>
+        <comment></comment>
+        <globalOrc>gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+This final instrument is the result of an experiment with sequential feedback systems. 
+There is an input source into four sequential iir delay units.
+I desired this to be highly unpreditable and chaotic...I believe that these demands have certainly been met!
+
+
+
+;------------------------
+   
+
+The buzz opcode serves as the input source to the system. A random number of harmonics between 20 and 30 is chosen. 
+This has an effect on the overall brightness. The frequency of the buzz object is set to be extremely low. 
+This has the effect of an overall tremolo and also is a large factor in the final spectrum.
+
+*/
+
+   
+
+  iharm random 20, 30
+  iharm = int(iharm)
+  asource  buzz      1, 1/p3*(&lt;speed&lt;INSTR_ID&gt;&gt;*&lt;mult&lt;INSTR_ID&gt;&gt;), iharm, gi_sine_1_&lt;INSTR_ID&gt;
+
+;--------------------------------------
+
+;kinput_length will determine the length of the source input. It can range from a small grain to continuous input.
+;The longer the input the more chaotic the system will be.
+  kinput_length linseg 1, p3/&lt;source-length&lt;INSTR_ID&gt;&gt;, 1, 0, 0, 0, 0
+  asource = asource*kinput_length
+;--------------------------------------
+;The most dangerous aspect is of course the feedback level, here it is set to always be between 0 and 0.999. 
+
+  kres pow &lt;res&lt;INSTR_ID&gt;&gt;, &lt;shape&lt;INSTR_ID&gt;&gt; ;&lt;shape&gt; will bias the input from  &lt;res&gt; to lean towards higher or lower feedback
+  kpitch = 1/&lt;pitch&lt;INSTR_ID&gt;&gt; ;this sets the delay time
+  kaccum = &lt;accum&lt;INSTR_ID&gt;&gt; ;kaccum is multiplied by kpitch after every delay unit.
+
+;--------------------------
+
+;the ktime oscillator is used to vary the pitch over the course of the note.
+
+ktime oscili 0.5, 1/p3, gi_sine_1_&lt;INSTR_ID&gt;, 0
+ktime = ktime+0.5
+
+;--------------------------
+
+
+ktime1 = (ktime*kpitch*0.5)+kpitch*0.5
+adump delayr 1                    
+	amove deltapi ktime1              
+delayw asource+(amove*kres)   
+  
+
+;-------------------------
+kpitch = kpitch*kaccum
+ktime2 = (ktime*kpitch)+kpitch
+adump2 delayr 1
+	amove2 deltapi ktime2
+delayw asource+(amove2*kres)
+
+;-----------------------
+amove = amove+amove2
+;-----------------------
+
+kpitch = kpitch*kaccum
+ktime3 = (ktime*kpitch)+kpitch
+adump3 delayr 1
+	amove3 deltapi ktime3
+delayw amove+(amove3*kres)
+
+;--------------------
+amove = amove+amove3
+;---------------------
+
+kpitch = kpitch*kaccum
+ktime4 = (ktime*kpitch)+kpitch
+adump4 delayr 1
+	amove4 deltapi ktime4
+delayw amove+(amove4*kres)
+
+;-------------------
+amove = amove+amove4
+;--------------------
+
+; atone is used to normalise the large amounts of DC offset that can occur
+amove atone amove, 50
+;balance to secure a usable level.
+abal oscil 0dbfs*0.25, 100, gi_sine_1_&lt;INSTR_ID&gt;
+amove balance amove, abal
+
+;a clip just in case
+amove clip amove, 1, 0dbfs
+
+; and a final envelope
+kenv linen 1, 0.4, p3, 0.4
+
+
+blueMixerOut amove*kenv, amove*kenv</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>speed&lt;INSTR_ID&gt;</objectName>
+            <x>207</x>
+            <y>76</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.20000286</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>mult&lt;INSTR_ID&gt;</objectName>
+            <x>212</x>
+            <y>106</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <resolution>0.1</resolution>
+            <value>262.29526</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>227</x>
+            <y>66</y>
+            <label>Add+Mult speed</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>source-length&lt;INSTR_ID&gt;</objectName>
+            <x>316</x>
+            <y>165</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>50.0</maximum>
+            <resolution>0.1</resolution>
+            <value>5.0000124</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>res&lt;INSTR_ID&gt;</objectName>
+            <x>40</x>
+            <y>196</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>0.999</maximum>
+            <resolution>0.001</resolution>
+            <value>0.36799756</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>shape&lt;INSTR_ID&gt;</objectName>
+            <x>32</x>
+            <y>228</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>2.0</maximum>
+            <resolution>0.1</resolution>
+            <value>2.0</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>41</x>
+            <y>166</y>
+            <label>Res lvl + bias</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>accum&lt;INSTR_ID&gt;</objectName>
+            <x>73</x>
+            <y>40</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.25</minimum>
+            <maximum>2.0</maximum>
+            <value>1.6433684</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>pitch&lt;INSTR_ID&gt;</objectName>
+            <x>156</x>
+            <y>31</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <value>272.93896</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>16</y>
+            <label>Pitch stack</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>165</x>
+            <y>15</y>
+            <label>Del Pitch</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>231</x>
+            <y>147</y>
+            <label>Input-length as a proportion of P3</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1009465165' name='accum&lt;INSTR_ID&gt;' label='' min='0.25' max='2.0' resolution='-1.0' automationEnabled='true' value='1.6433684'>
+            <line name='' version='2' max='2.0' min='0.25' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6433684'/>
+              <linePoint x='0.75' y='0.7908599'/>
+              <linePoint x='1.9375' y='1.6634614'/>
+              <linePoint x='5.5625' y='0.65384614'/>
+              <linePoint x='28.25' y='1.3570533'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151262' name='mult&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='0.1' automationEnabled='false' value='262.29526'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='0.1' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='200.0'/>
+              <linePoint x='1.6269532' y='194.90001'/>
+              <linePoint x='3.746094' y='338.5'/>
+              <linePoint x='4.498047' y='82.1'/>
+              <linePoint x='5.8652353' y='348.7'/>
+              <linePoint x='6.138671' y='51.3'/>
+              <linePoint x='8.531249' y='71.8'/>
+              <linePoint x='8.873046' y='348.7'/>
+              <linePoint x='10.787109' y='328.2'/>
+              <linePoint x='11.607423' y='323.1'/>
+              <linePoint x='12.645833' y='302.6'/>
+              <linePoint x='13.135417' y='112.8'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1009465225' name='pitch&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='-1.0' automationEnabled='false' value='272.93896'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='266.61136'/>
+              <linePoint x='0.25' y='149.64293'/>
+              <linePoint x='1.6196429' y='266.66666'/>
+              <linePoint x='2.5625' y='189.74359'/>
+              <linePoint x='3.7803571' y='179.48718'/>
+              <linePoint x='4.2517858' y='143.58974'/>
+              <linePoint x='4.958928' y='97.435905'/>
+              <linePoint x='6.4517856' y='82.05128'/>
+              <linePoint x='7.669643' y='353.84613'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151268' name='res&lt;INSTR_ID&gt;' label='' min='0.0' max='0.999' resolution='0.001' automationEnabled='false' value='0.36799756'>
+            <line name='' version='2' max='0.999' min='0.0' resolution='0.001' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.36'/>
+              <linePoint x='1.2851564' y='0.333'/>
+              <linePoint x='3.1308591' y='0.448'/>
+              <linePoint x='3.746094' y='0.15400001'/>
+              <linePoint x='4.6347656' y='0.92200005'/>
+              <linePoint x='5.5917974' y='0.179'/>
+              <linePoint x='6.890626' y='0.564'/>
+              <linePoint x='9.214843' y='0.87100005'/>
+              <linePoint x='12.635416' y='0.141'/>
+              <linePoint x='12.875' y='0.115'/>
+              <linePoint x='13.083333' y='0.41000003'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151266' name='shape&lt;INSTR_ID&gt;' label='' min='0.0' max='2.0' resolution='0.1' automationEnabled='false' value='2.0'>
+            <line name='' version='2' max='2.0' min='0.0' resolution='0.1' color='-23296' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6'/>
+              <linePoint x='1.6269532' y='1.6'/>
+              <linePoint x='4.4296875' y='0.5'/>
+              <linePoint x='6.890626' y='1.6'/>
+              <linePoint x='7.7792964' y='0.1'/>
+              <linePoint x='12.125' y='0.1'/>
+              <linePoint x='12.760417' y='0.90000004'/>
+              <linePoint x='13.166667' y='1.2'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151260' name='speed&lt;INSTR_ID&gt;' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.20000286'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.20000286'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='4' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>Feedback-system-4</name>
+        <comment></comment>
+        <globalOrc>gi_sine_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+This final instrument is the result of an experiment with sequential feedback systems. 
+There is an input source into four sequential iir delay units.
+I desired this to be highly unpreditable and chaotic...I believe that these demands have certainly been met!
+
+
+
+;------------------------
+   
+
+The buzz opcode serves as the input source to the system. A random number of harmonics between 20 and 30 is chosen. 
+This has an effect on the overall brightness. The frequency of the buzz object is set to be extremely low. 
+This has the effect of an overall tremolo and also is a large factor in the final spectrum.
+
+*/
+
+   
+
+  iharm random 20, 30
+  iharm = int(iharm)
+  asource  buzz      1, 1/p3*(&lt;speed&lt;INSTR_ID&gt;&gt;*&lt;mult&lt;INSTR_ID&gt;&gt;), iharm, gi_sine_1_&lt;INSTR_ID&gt;
+
+;--------------------------------------
+
+;kinput_length will determine the length of the source input. It can range from a small grain to continuous input.
+;The longer the input the more chaotic the system will be.
+  kinput_length linseg 1, p3/&lt;source-length&lt;INSTR_ID&gt;&gt;, 1, 0, 0, 0, 0
+  asource = asource*kinput_length
+;--------------------------------------
+;The most dangerous aspect is of course the feedback level, here it is set to always be between 0 and 0.999. 
+
+  kres pow &lt;res&lt;INSTR_ID&gt;&gt;, &lt;shape&lt;INSTR_ID&gt;&gt; ;&lt;shape&gt; will bias the input from  &lt;res&gt; to lean towards higher or lower feedback
+  kpitch = 1/&lt;pitch&lt;INSTR_ID&gt;&gt; ;this sets the delay time
+  kaccum = &lt;accum&lt;INSTR_ID&gt;&gt; ;kaccum is multiplied by kpitch after every delay unit.
+
+;--------------------------
+
+;the ktime oscillator is used to vary the pitch over the course of the note.
+
+ktime oscili 0.5, 1/p3, gi_sine_1_&lt;INSTR_ID&gt;, 0
+ktime = ktime+0.5
+
+;--------------------------
+
+
+ktime1 = (ktime*kpitch*0.5)+kpitch*0.5
+adump delayr 1                    
+	amove deltapi ktime1              
+delayw asource+(amove*kres)   
+  
+
+;-------------------------
+kpitch = kpitch*kaccum
+ktime2 = (ktime*kpitch)+kpitch
+adump2 delayr 1
+	amove2 deltapi ktime2
+delayw asource+(amove2*kres)
+
+;-----------------------
+amove = amove+amove2
+;-----------------------
+
+kpitch = kpitch*kaccum
+ktime3 = (ktime*kpitch)+kpitch
+adump3 delayr 1
+	amove3 deltapi ktime3
+delayw amove+(amove3*kres)
+
+;--------------------
+amove = amove+amove3
+;---------------------
+
+kpitch = kpitch*kaccum
+ktime4 = (ktime*kpitch)+kpitch
+adump4 delayr 1
+	amove4 deltapi ktime4
+delayw amove+(amove4*kres)
+
+;-------------------
+amove = amove+amove4
+;--------------------
+
+; atone is used to normalise the large amounts of DC offset that can occur
+amove atone amove, 50
+;balance to secure a usable level.
+abal oscil 0dbfs*0.25, 100, gi_sine_1_&lt;INSTR_ID&gt;
+amove balance amove, abal
+
+;a clip just in case
+amove clip amove, 1, 0dbfs
+
+; and a final envelope
+kenv linen 1, 0.4, p3, 0.4
+
+
+blueMixerOut amove*kenv, amove*kenv</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>speed&lt;INSTR_ID&gt;</objectName>
+            <x>207</x>
+            <y>76</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.39999646</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>mult&lt;INSTR_ID&gt;</objectName>
+            <x>212</x>
+            <y>106</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <resolution>0.1</resolution>
+            <value>367.99802</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>227</x>
+            <y>66</y>
+            <label>Add+Mult speed</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>source-length&lt;INSTR_ID&gt;</objectName>
+            <x>316</x>
+            <y>165</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>1.0</minimum>
+            <maximum>50.0</maximum>
+            <resolution>0.1</resolution>
+            <value>48.59967</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>res&lt;INSTR_ID&gt;</objectName>
+            <x>40</x>
+            <y>196</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>0.999</maximum>
+            <resolution>0.001</resolution>
+            <value>0.5970024</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>shape&lt;INSTR_ID&gt;</objectName>
+            <x>32</x>
+            <y>228</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>2.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.70000386</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>41</x>
+            <y>166</y>
+            <label>Res lvl + bias</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>accum&lt;INSTR_ID&gt;</objectName>
+            <x>73</x>
+            <y>40</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.25</minimum>
+            <maximum>2.0</maximum>
+            <value>1.6433684</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>pitch&lt;INSTR_ID&gt;</objectName>
+            <x>156</x>
+            <y>31</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>400.0</maximum>
+            <value>103.18164</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>16</y>
+            <label>Pitch stack</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>165</x>
+            <y>15</y>
+            <label>Del Pitch</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>231</x>
+            <y>147</y>
+            <label>Input-length as a proportion of P3</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1009465165' name='accum&lt;INSTR_ID&gt;' label='' min='0.25' max='2.0' resolution='-1.0' automationEnabled='true' value='1.6433684'>
+            <line name='' version='2' max='2.0' min='0.25' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6433684'/>
+              <linePoint x='0.75' y='0.7908599'/>
+              <linePoint x='1.9375' y='1.6634614'/>
+              <linePoint x='5.5625' y='0.65384614'/>
+              <linePoint x='31.916666' y='1.0729241'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151262' name='mult&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='0.1' automationEnabled='false' value='367.99802'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='0.1' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='200.0'/>
+              <linePoint x='1.6269532' y='194.90001'/>
+              <linePoint x='3.746094' y='338.5'/>
+              <linePoint x='4.498047' y='82.1'/>
+              <linePoint x='5.8652353' y='348.7'/>
+              <linePoint x='6.138671' y='51.3'/>
+              <linePoint x='8.531249' y='71.8'/>
+              <linePoint x='8.873046' y='348.7'/>
+              <linePoint x='10.787109' y='328.2'/>
+              <linePoint x='11.607423' y='323.1'/>
+              <linePoint x='12.645833' y='302.6'/>
+              <linePoint x='13.135417' y='112.8'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1009465225' name='pitch&lt;INSTR_ID&gt;' label='' min='0.0' max='400.0' resolution='-1.0' automationEnabled='false' value='103.18164'>
+            <line name='' version='2' max='400.0' min='0.0' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='266.61136'/>
+              <linePoint x='0.25' y='149.64293'/>
+              <linePoint x='1.6196429' y='266.66666'/>
+              <linePoint x='2.5625' y='189.74359'/>
+              <linePoint x='3.7803571' y='179.48718'/>
+              <linePoint x='4.2517858' y='143.58974'/>
+              <linePoint x='4.958928' y='97.435905'/>
+              <linePoint x='6.4517856' y='82.05128'/>
+              <linePoint x='7.669643' y='353.84613'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151268' name='res&lt;INSTR_ID&gt;' label='' min='0.0' max='0.999' resolution='0.001' automationEnabled='false' value='0.5970024'>
+            <line name='' version='2' max='0.999' min='0.0' resolution='0.001' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.36'/>
+              <linePoint x='1.2851564' y='0.333'/>
+              <linePoint x='3.1308591' y='0.448'/>
+              <linePoint x='3.746094' y='0.15400001'/>
+              <linePoint x='4.6347656' y='0.92200005'/>
+              <linePoint x='5.5917974' y='0.179'/>
+              <linePoint x='6.890626' y='0.564'/>
+              <linePoint x='9.214843' y='0.87100005'/>
+              <linePoint x='12.635416' y='0.141'/>
+              <linePoint x='12.875' y='0.115'/>
+              <linePoint x='13.083333' y='0.41000003'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151266' name='shape&lt;INSTR_ID&gt;' label='' min='0.0' max='2.0' resolution='0.1' automationEnabled='false' value='0.70000386'>
+            <line name='' version='2' max='2.0' min='0.0' resolution='0.1' color='-23296' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.6'/>
+              <linePoint x='1.6269532' y='1.6'/>
+              <linePoint x='4.4296875' y='0.5'/>
+              <linePoint x='6.890626' y='1.6'/>
+              <linePoint x='7.7792964' y='0.1'/>
+              <linePoint x='12.125' y='0.1'/>
+              <linePoint x='12.760417' y='0.90000004'/>
+              <linePoint x='13.166667' y='1.2'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='995151260' name='speed&lt;INSTR_ID&gt;' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.39999646'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.39999646'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+  </arrangement>
+  <mixer>
+    <enabled>true</enabled>
+    <extraRenderTime>0.0</extraRenderTime>
+    <channelList list='channels'>
+      <channel>
+        <name>1</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='-317905999' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='true' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+            <linePoint x='13.333333' y='-1.8461533'/>
+            <linePoint x='16.333334' y='-75.23077'/>
+            <linePoint x='18.5' y='-28.153847'/>
+            <linePoint x='28.166666' y='-89.07692'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>2</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1009465329' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='true' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-14623488' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+            <linePoint x='27.583334' y='-9.214279'/>
+            <linePoint x='32.416668' y='-96.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>3</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1009465349' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>4</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1009465369' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+    </channelList>
+    <channelList list='subChannels'/>
+    <channel>
+      <name>Master</name>
+      <outChannel>Master</outChannel>
+      <level>0.0</level>
+      <muted>false</muted>
+      <solo>false</solo>
+      <effectsChain bin='pre'/>
+      <effectsChain bin='post'/>
+      <parameter uniqueId='-317906002' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+        <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+          <linePoint x='0.0' y='0.0'/>
+        </line>
+      </parameter>
+    </channel>
+  </mixer>
+  <tables></tables>
+  <soundObjectLibrary/>
+  <globalOrcSco>
+    <globalOrc></globalOrc>
+    <globalSco></globalSco>
+  </globalOrcSco>
+  <opcodeList/>
+  <liveData>
+    <commandLine>csound -Wdo devaudio -L stdin</commandLine>
+    <commandLineEnabled>false</commandLineEnabled>
+    <commandLineOverride>false</commandLineOverride>
+  </liveData>
+  <soundObject type='blue.soundObject.PolyObject'>
+    <subjectiveDuration>2.0</subjectiveDuration>
+    <startTime>0.0</startTime>
+    <name>root</name>
+    <backgroundColor>-10066279</backgroundColor>
+    <timeBehavior>0</timeBehavior>
+    <noteProcessorChain/>
+    <isRoot>true</isRoot>
+    <pixelSecond>12</pixelSecond>
+    <defaultHeightIndex>0</defaultHeightIndex>
+    <snapEnabled>false</snapEnabled>
+    <snapValue>1.0</snapValue>
+    <timeDisplay>0</timeDisplay>
+    <timeUnit>5</timeUnit>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>33.833332</subjectiveDuration>
+        <startTime>0.0</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-3355648</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 2 3 4 5</score>
+      </soundObject>
+      <parameterId>-317905999</parameterId>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='2'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>34.416668</subjectiveDuration>
+        <startTime>16.166666</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-6737152</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i2 0 2</score>
+      </soundObject>
+      <parameterId>1009465329</parameterId>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>6.3333335</subjectiveDuration>
+        <startTime>28.25</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-10066432</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i3 0 2</score>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.5833335</subjectiveDuration>
+        <startTime>29.583334</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-205</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i4 0 2</score>
+      </soundObject>
+    </soundLayer>
+  </soundObject>
+  <scratchPadData>
+    <isWordWrapEnabled>true</isWordWrapEnabled>
+    <scratchText/>
+  </scratchPadData>
+  <noteProcessorChainMap/>
+  <renderStartTime>0.0</renderStartTime>
+  <renderEndTime>46.75</renderEndTime>
+  <markersList/>
+  <loopRendering>false</loopRendering>
+  <tempo>
+    <enabled>false</enabled>
+    <visible>true</visible>
+    <line name='' version='2' max='240.0' min='30.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+      <linePoint x='0.0' y='60.0'/>
+      <linePoint x='3.0833333' y='58.0'/>
+      <linePoint x='8.333333' y='97.66667'/>
+      <linePoint x='18.166666' y='60.333336'/>
+    </line>
+  </tempo>
+  <midiInputProcessor>
+    <keyMapping>PCH</keyMapping>
+    <velMapping>MIDI</velMapping>
+    <pitchConstant/>
+    <ampConstant/>
+    <scale>
+      <scaleName>12TET</scaleName>
+      <baseFrequency>261.62558</baseFrequency>
+      <octave>2.0</octave>
+      <ratios>
+        <ratio>1.0</ratio>
+        <ratio>1.0594631</ratio>
+        <ratio>1.122462</ratio>
+        <ratio>1.1892071</ratio>
+        <ratio>1.2599211</ratio>
+        <ratio>1.3348398</ratio>
+        <ratio>1.4142135</ratio>
+        <ratio>1.4983071</ratio>
+        <ratio>1.587401</ratio>
+        <ratio>1.6817929</ratio>
+        <ratio>1.7817974</ratio>
+        <ratio>1.8877486</ratio>
+      </ratios>
+    </scale>
+  </midiInputProcessor>
+</blueData>

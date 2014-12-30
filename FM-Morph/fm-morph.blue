@@ -1,0 +1,501 @@
+<blueData version='2.1.9'>
+  <projectProperties>
+    <title></title>
+    <author></author>
+    <notes></notes>
+    <sampleRate>44100</sampleRate>
+    <ksmps>1</ksmps>
+    <channels>2</channels>
+    <diskSampleRate>44100</diskSampleRate>
+    <diskKsmps>1</diskKsmps>
+    <diskChannels>2</diskChannels>
+    <useAudioOut>true</useAudioOut>
+    <useAudioIn>false</useAudioIn>
+    <useMidiIn>false</useMidiIn>
+    <useMidiOut>false</useMidiOut>
+    <noteAmpsEnabled>true</noteAmpsEnabled>
+    <outOfRangeEnabled>true</outOfRangeEnabled>
+    <warningsEnabled>true</warningsEnabled>
+    <benchmarkEnabled>true</benchmarkEnabled>
+    <advancedSettings></advancedSettings>
+    <completeOverride>false</completeOverride>
+    <fileName></fileName>
+    <askOnRender>false</askOnRender>
+    <diskNoteAmpsEnabled>true</diskNoteAmpsEnabled>
+    <diskOutOfRangeEnabled>true</diskOutOfRangeEnabled>
+    <diskWarningsEnabled>true</diskWarningsEnabled>
+    <diskBenchmarkEnabled>true</diskBenchmarkEnabled>
+    <diskAdvancedSettings></diskAdvancedSettings>
+    <diskCompleteOverride>false</diskCompleteOverride>
+    <diskAlwaysRenderEntireProject>false</diskAlwaysRenderEntireProject>
+    <csladspaSettings>
+      <name/>
+      <maker/>
+      <uniqueId>0</uniqueId>
+      <copyright/>
+      <portDefinitionList/>
+      <enabled>false</enabled>
+    </csladspaSettings>
+  </projectProperties>
+  <arrangement>
+    <instrumentAssignment arrangementId='1' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>FM-Morph</name>
+        <comment></comment>
+        <globalOrc>gi_tab_1_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1
+gi_tab_2_&lt;INSTR_ID&gt; ftgen 0, 0, 4096, 10, 1, 0.5, 0, -0.5</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+FM-Morph will mix between two fm opcodes. The goal was to have a dynamic sound that still maintained
+a definite attack and decay archetype. I wanted to create a sense that the internal aspects of the sound
+are subtly changing and I believe this was successful. 
+
+*** The score parameters are:
+
+p4 = The pitch in hertz. If this is 0 then a random pitch is chosen.
+
+p5 = This parameter mainly effects the volume and has influence on the brightness. At 1 the sound
+will be full volume and at its brightest level. If this is left as zero then it will be 1 by default.
+Be aware of this if using algorithms for score generation that generate 0 values. 
+
+p6 = This is the carrier modulation and is set to 1 by default. 
+
+***
+
+
+*** The user controls on the interface are:
+
+Brightness. This will control the index and also the cut off point on the `tone&apos; lo-pass filter
+
+Modulation (non-automatable). This controls the modulation amount. An integer will lead to an harmonically related spectra.
+A non-integer will have an inharmonic spectra. 
+
+Direction. The direction controls the inharmonicity of the modulation. The modulation value is split into its integer and fractional parts. 
+The inharmonicity (fractional part) will increase from the harmonic (integer part) part 
+if the direction is `1&apos; (up). If the direction is `0&apos; (down) then the fractional part will decrease towards the integer.
+For example, if the modulation was 4.8 and the direction was up: the note would would begin at a modulation rate of 4,
+halfway through the note the modulation will be 4.4 and finally, at the end, it would be 4.8. 
+The direction can be modified during the notes duration. 
+
+Xtime. This is the fade time between the two fm opcodes. The first has a slightly detuned carrier and doubled index. 
+It is the idea that the first fm will be the `attack&apos; and the second the smoother decay. 
+
+***
+
+
+*/
+
+
+
+;Set the default values for the score parameters.
+
+irand_note random 100, 800
+inote = (p4 == 0 ? irand_note : p4)
+iamp = (p5 == 0 ? 1 : p5)
+kcar = (p6 == 0 ? 1 : p6)
+;----------------------------------
+
+/* These are the two envelopes that various parameters can `plug into&apos;.
+Kenv1 controls the overall amplitude of the fm opcodes along with the modulation index.
+Kenv2 controls the inharmonic increase/decrease and also the crossfade between the fm opcodes.
+To enchance the sense of interrelated elements it was a strong design principle that many different 
+parameters use the same envelopes.
+*/
+
+kenv1 linseg iamp, p3, 0, 0, 0
+kenv2 linseg 1, p3/3*2, 0, 0, 0
+
+;----------------------------------
+
+;This section controls increase/decrease of inharmonicity. 
+
+imodint = int(&lt;mod&gt;) ;we first need the harmonic part which will be the integer.
+imodfrac = &lt;mod&gt;-imodint ;subtracting the integer from the original value will result in the fractional part
+	
+if &lt;dir&gt; = 0 then
+	kmodfrac = imodfrac*kenv2  ;decrease the fractional (inharmonic) part out according to kenv2.
+else
+	kmodfrac = imodfrac*(1-kenv2) ;increase the fractional part from the integer.
+endif
+
+kmod = imodint+kmodfrac ;add the new fractional part to the original integer. This will now be the modulation rate.
+
+;-----------------------------------
+
+;This controls the index. A quadratic curve of kenv1 is chosen to scale the `bright&apos; level.
+
+kenvind = (kenv1*kenv1)*(kenv1*kenv1)
+kind = kenvind*&lt;bright&gt;
+
+;-----------------------------------
+
+/* The afm1 will crossfade into afm2 using the kenv2 envelope further below. afm1 reads from a
+more harmonically complex table then afm2 (a single fundamental sine function).    */
+
+afm1 foscil (0dbfs*0.9)*kenv1, inote, kcar*1.5, kmod, kind*2, gi_tab_2_&lt;INSTR_ID&gt;
+afm2 foscil (0dbfs*0.9)*kenv1, inote, kcar, kmod, kind, gi_tab_1_&lt;INSTR_ID&gt;
+
+;-----------------------------------
+
+/*The `xtime&apos; parameter is used for shaping the kenv2 envelope. xtimes range is between 0 and 20. 
+Kenv2^20 ill result in afm1 having an attack like nature and afm2 being the main body of the sound.
+Xtime values of less than 1 will result in afm1 audibly crossfading into afm2.
+The `default&apos; is kenv2^0.5.
+
+*/
+
+if i(&lt;xtime&gt;) &gt; 0 then
+	kenv2 pow kenv2, i(&lt;xtime&gt;)
+else
+	kenv2 = 0.5
+endif
+
+;----------------------------------
+
+amix = (afm1*kenv2)+(afm2*(1-kenv2)) ;the crossfade between the two fm opcodes.
+
+;----------------------------------
+
+;The bright parameter also controls the tone level. These values were fine tuned to reach, 
+; what I believe, sounds the best.
+
+itone pow (i(&lt;bright&gt;)*0.1), 3
+itone = 1.2-itone
+amix tone amix, itone*3000
+
+;---------------------------------
+
+
+iact active &lt;INSTR_ID&gt;
+iact = 1/iact
+icheck init iact
+kact = iact
+check:
+	icheck active &lt;INSTR_ID&gt;
+	icheck = 1/icheck
+	kact linseg iact, 0.001 , icheck, 0, icheck
+	reinit check
+	rireturn
+
+blueMixerOut amix*kact, amix*kact</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBKnob' version='2'>
+            <objectName>mod</objectName>
+            <x>24</x>
+            <y>26</y>
+            <automationAllowed>false</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>5.0</maximum>
+            <value>3.0627823</value>
+            <knobWidth>60</knobWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>bright</objectName>
+            <x>117</x>
+            <y>72</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.01</resolution>
+            <value>1.9631577</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>dir</objectName>
+            <x>454</x>
+            <y>88</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>1.0</resolution>
+            <value>1.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>406</x>
+            <y>233</y>
+            <label>Down</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>429</x>
+            <y>89</y>
+            <label>Up</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>xtime</objectName>
+            <x>121</x>
+            <y>184</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>20.0</maximum>
+            <resolution>0.1</resolution>
+            <value>4.606062</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>25</x>
+            <y>104</y>
+            <label>Modulation</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>125</x>
+            <y>52</y>
+            <label>Brightness/Index</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>194</x>
+            <y>164</y>
+            <label>Xtime</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='-292207654' name='bright' label='' min='0.0' max='10.0' resolution='0.01' automationEnabled='true' value='6.069986'>
+            <line name='' version='2' max='10.0' min='0.0' resolution='0.01' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.0'/>
+              <linePoint x='5.9666667' y='0.19999999'/>
+              <linePoint x='8.2' y='3.1'/>
+              <linePoint x='11.4' y='1.0'/>
+              <linePoint x='13.533334' y='1.6999999'/>
+              <linePoint x='14.633333' y='7.1'/>
+              <linePoint x='27.0' y='1.6999999'/>
+              <linePoint x='29.533333' y='6.7'/>
+              <linePoint x='30.533333' y='0.5'/>
+              <linePoint x='30.7' y='3.0'/>
+              <linePoint x='35.0' y='2.5'/>
+              <linePoint x='36.933334' y='8.599999'/>
+              <linePoint x='48.5' y='0.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-292207650' name='dir' label='' min='0.0' max='1.0' resolution='1.0' automationEnabled='true' value='4.922428E-6'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='1.0' color='-16741632' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.0'/>
+              <linePoint x='30.5' y='1.0'/>
+              <linePoint x='32.0' y='0.0'/>
+              <linePoint x='34.233334' y='1.0'/>
+              <linePoint x='35.666668' y='0.0'/>
+              <linePoint x='37.733334' y='1.0'/>
+              <linePoint x='39.766666' y='1.0'/>
+              <linePoint x='40.933334' y='0.0'/>
+              <linePoint x='42.833332' y='1.0'/>
+              <linePoint x='43.4' y='0.0'/>
+              <linePoint x='44.033333' y='1.0'/>
+              <linePoint x='45.0' y='0.0'/>
+              <linePoint x='45.833332' y='0.0'/>
+              <linePoint x='46.466667' y='1.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-292207623' name='xtime' label='' min='0.0' max='20.0' resolution='0.1' automationEnabled='true' value='10.400406'>
+            <line name='' version='2' max='20.0' min='0.0' resolution='0.1' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='9.400001'/>
+              <linePoint x='2.6' y='17.6'/>
+              <linePoint x='27.9' y='4.2000003'/>
+              <linePoint x='30.533333' y='4.2000003'/>
+              <linePoint x='30.966667' y='10.2'/>
+              <linePoint x='39.366665' y='10.0'/>
+              <linePoint x='40.166668' y='1.0'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+  </arrangement>
+  <mixer>
+    <enabled>true</enabled>
+    <extraRenderTime>0.0</extraRenderTime>
+    <channelList list='channels'>
+      <channel>
+        <name>1</name>
+        <outChannel>Master</outChannel>
+        <level>-1.8574506</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='966628390' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='true' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-23296' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+            <linePoint x='29.8' y='-2.040001'/>
+            <linePoint x='30.3' y='-96.0'/>
+            <linePoint x='30.6' y='-96.0'/>
+            <linePoint x='30.9' y='-11.760002'/>
+            <linePoint x='33.9' y='-13.919998'/>
+            <linePoint x='36.766666' y='-0.9599991'/>
+            <linePoint x='37.833332' y='-3.119995'/>
+            <linePoint x='38.733334' y='-25.800003'/>
+            <linePoint x='39.3' y='1.199997'/>
+            <linePoint x='41.333332' y='0.11999512'/>
+            <linePoint x='49.133335' y='-30.119995'/>
+          </line>
+        </parameter>
+      </channel>
+    </channelList>
+    <channelList list='subChannels'/>
+    <channel>
+      <name>Master</name>
+      <outChannel>Master</outChannel>
+      <level>0.0</level>
+      <muted>false</muted>
+      <solo>false</solo>
+      <effectsChain bin='pre'/>
+      <effectsChain bin='post'/>
+      <parameter uniqueId='-472754786' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+        <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+          <linePoint x='0.0' y='0.0'/>
+        </line>
+      </parameter>
+    </channel>
+  </mixer>
+  <tables></tables>
+  <soundObjectLibrary/>
+  <globalOrcSco>
+    <globalOrc></globalOrc>
+    <globalSco></globalSco>
+  </globalOrcSco>
+  <opcodeList/>
+  <liveData>
+    <commandLine>csound -Wdo devaudio -L stdin</commandLine>
+    <commandLineEnabled>false</commandLineEnabled>
+    <commandLineOverride>false</commandLineOverride>
+  </liveData>
+  <soundObject type='blue.soundObject.PolyObject'>
+    <subjectiveDuration>2.0</subjectiveDuration>
+    <startTime>0.0</startTime>
+    <name>root</name>
+    <backgroundColor>-10066279</backgroundColor>
+    <timeBehavior>0</timeBehavior>
+    <noteProcessorChain/>
+    <isRoot>true</isRoot>
+    <pixelSecond>30</pixelSecond>
+    <defaultHeightIndex>0</defaultHeightIndex>
+    <snapEnabled>false</snapEnabled>
+    <snapValue>1.0</snapValue>
+    <timeDisplay>0</timeDisplay>
+    <timeUnit>5</timeUnit>
+    <soundLayer name='' muted='false' solo='false' heightIndex='4'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>18.433332</subjectiveDuration>
+        <startTime>30.566668</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-39322</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 1 180 0.8
+i1 0 1 270 0.5
+i1 0.9 1 390 0.3
+i1 0.9 1 750 0.9
+</score>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>27.666666</subjectiveDuration>
+        <startTime>2.8</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-3407617</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+
+
+
+
+for i in range(1, blueDuration*24):
+
+	score += &quot;i1 %f 2 %f 1 \n&quot;%(i,((i*80)+40)%250)</pythonCode>
+      </soundObject>
+      <parameterId>-292207623</parameterId>
+      <parameterId>-292207650</parameterId>
+      <parameterId>-292207654</parameterId>
+      <parameterId>966628390</parameterId>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>6.2</subjectiveDuration>
+        <startTime>31.133333</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-39322</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 2 80 0.8
+
+</score>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.9</subjectiveDuration>
+        <startTime>41.9</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-39322</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 2 480 0.3
+i1 0 2 566 0.3
+i1 0 2 680 0.3
+i1 0 2 720 0.6</score>
+      </soundObject>
+    </soundLayer>
+  </soundObject>
+  <scratchPadData>
+    <isWordWrapEnabled>true</isWordWrapEnabled>
+    <scratchText>*(ivol*ivol)</scratchText>
+  </scratchPadData>
+  <noteProcessorChainMap/>
+  <renderStartTime>27.133333</renderStartTime>
+  <renderEndTime>49.1</renderEndTime>
+  <markersList/>
+  <loopRendering>true</loopRendering>
+  <tempo>
+    <enabled>true</enabled>
+    <visible>true</visible>
+    <line name='' version='2' max='240.0' min='30.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+      <linePoint x='0.0' y='60.0'/>
+      <linePoint x='2.8333333' y='139.66666'/>
+      <linePoint x='20.933332' y='55.66667'/>
+      <linePoint x='25.633333' y='125.666664'/>
+      <linePoint x='29.5' y='235.33333'/>
+      <linePoint x='30.5' y='55.66667'/>
+    </line>
+  </tempo>
+  <midiInputProcessor>
+    <keyMapping>PCH</keyMapping>
+    <velMapping>MIDI</velMapping>
+    <pitchConstant/>
+    <ampConstant/>
+    <scale>
+      <scaleName>12TET</scaleName>
+      <baseFrequency>261.62558</baseFrequency>
+      <octave>2.0</octave>
+      <ratios>
+        <ratio>1.0</ratio>
+        <ratio>1.0594631</ratio>
+        <ratio>1.122462</ratio>
+        <ratio>1.1892071</ratio>
+        <ratio>1.2599211</ratio>
+        <ratio>1.3348398</ratio>
+        <ratio>1.4142135</ratio>
+        <ratio>1.4983071</ratio>
+        <ratio>1.587401</ratio>
+        <ratio>1.6817929</ratio>
+        <ratio>1.7817974</ratio>
+        <ratio>1.8877486</ratio>
+      </ratios>
+    </scale>
+  </midiInputProcessor>
+</blueData>

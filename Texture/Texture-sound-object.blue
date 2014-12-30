@@ -1,0 +1,72 @@
+ <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+        <subjectiveDuration>4.1764708</subjectiveDuration>
+        <startTime>5.352941</startTime>
+        <name>Texture-pack</name>
+        <backgroundColor>-12566464</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <code>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+#&quot;score = &quot;i1 0 2 &quot;/home/andy/sounds/tabla_1.wav&quot;
+
+import os
+import random
+import glob
+
+
+listing = glob.glob(&apos;&lt;folder&gt;/*.wav&apos;)
+size = len(listing)
+
+for i in range(&lt;notes&gt;):
+	f = random.randint(0, size-1)
+	l = random.random()
+	l *= &lt;pack&gt;
+	score += &quot;i1 %f 100 \&quot;%s\&quot;\n&quot; % ( i*l, listing[f])
+
+</code>
+        <commandLine/>
+        <isExternal>false</isExternal>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBTextField'>
+            <objectName>folder</objectName>
+            <x>408</x>
+            <y>65</y>
+            <value>/media/STORAGE/quicksounds</value>
+            <textFieldWidth>100</textFieldWidth>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>notes</objectName>
+            <x>251</x>
+            <y>73</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>100.0</maximum>
+            <resolution>1.0</resolution>
+            <value>93.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>pack</objectName>
+            <x>415</x>
+            <y>133</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <value>1.0</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+        </graphicInterface>
+        <presetGroup name='Presets'/>
+        <syntaxType>Python</syntaxType>
+      </soundObject>
+      <parameterId>-816931200</parameterId>
+      <parameterId>-816931202</parameterId>
+    </soundLayer>
+  </soundObject>

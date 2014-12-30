@@ -1,0 +1,796 @@
+<blueData version='2.1.9'>
+  <projectProperties>
+    <title></title>
+    <author></author>
+    <notes></notes>
+    <sampleRate>44100</sampleRate>
+    <ksmps>10</ksmps>
+    <channels>2</channels>
+    <diskSampleRate>44100</diskSampleRate>
+    <diskKsmps>10</diskKsmps>
+    <diskChannels>2</diskChannels>
+    <useAudioOut>true</useAudioOut>
+    <useAudioIn>false</useAudioIn>
+    <useMidiIn>false</useMidiIn>
+    <useMidiOut>false</useMidiOut>
+    <noteAmpsEnabled>true</noteAmpsEnabled>
+    <outOfRangeEnabled>true</outOfRangeEnabled>
+    <warningsEnabled>true</warningsEnabled>
+    <benchmarkEnabled>true</benchmarkEnabled>
+    <advancedSettings></advancedSettings>
+    <completeOverride>false</completeOverride>
+    <fileName></fileName>
+    <askOnRender>false</askOnRender>
+    <diskNoteAmpsEnabled>true</diskNoteAmpsEnabled>
+    <diskOutOfRangeEnabled>true</diskOutOfRangeEnabled>
+    <diskWarningsEnabled>true</diskWarningsEnabled>
+    <diskBenchmarkEnabled>true</diskBenchmarkEnabled>
+    <diskAdvancedSettings></diskAdvancedSettings>
+    <diskCompleteOverride>false</diskCompleteOverride>
+    <diskAlwaysRenderEntireProject>false</diskAlwaysRenderEntireProject>
+    <csladspaSettings>
+      <name/>
+      <maker/>
+      <uniqueId>0</uniqueId>
+      <copyright/>
+      <portDefinitionList/>
+      <enabled>false</enabled>
+    </csladspaSettings>
+  </projectProperties>
+  <arrangement>
+    <instrumentAssignment arrangementId='1' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>texture</name>
+        <comment></comment>
+        <globalOrc>;pyinit
+;pyruni {{
+;import os
+;import random
+;def randfile():
+;	listing = os.listdir(&quot;&lt;folder&gt;&quot;)
+;	x = random.random(0, 3)
+;	return (listing[x])
+;}}
+; http://www.csounds.com/journal/issue6/pythonOpcodes.html   &lt;&lt; ref this
+
+/*
+pyinit 
+pyruni {{
+def average(a, b):
+	ave = (a+b)/2
+}}
+*/
+</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+Texture is designed to emulate the Texture process in the Composers&apos; Desktop Project software.  
+
+This instrument is a combination of orchestra code and a SoundObject that utilises Python.
+
+A directory containing various sound files is loaded by typing its path in the string input box in the 
+&apos;texture-pack&apos; object. Random files from the folder will be played using the `diskin2&apos; opcode. The parameters of
+this will be randomised within ranges set by the user.. 
+These ranges are set in the interface of this orchestra code. The parameters are:
+//
+Pitch (playback rate): A total range from 0 (no playback) to 4 (quadruple speed). With 0.5 being half speed.
+
+Rev amt: The percentage of sounds that are reversed.
+
+Chunk size: The length of the file played back. As a proportion of the sound object length. Be
+
+Amplitude: In total range of 0 to 1.
+
+Pan: In a range from 0 being hard left and 1 being hard right. If the range is set between 0.5 and 1, then the
+sounds will only occur in the centre or the right. 
+
+
+
+//
+
+Note::: 
+
+If min&gt;max then their functions are simple swapped. I.e. min will become max and vice versa. 
+
+The parameters on the python SoundObject are:
+
+Input string: This is the directory that sounds will be loaded from.
+
+No. voices: How many sounds to play over the duration of the object. 
+
+Scatter: The temporal distance between each sound. A scatter level of 0 will mean that all sounds are played at once. 
+A level of 1 will spread them apart (but not completely). 
+
+
+*/
+
+;---------------------------
+
+/* 
+The operations in this section are used for the majority of the parameters with slight variations in some.
+First, if the minimum is larger then the maximum the values are swapped.
+Then the range is found and a random number is chosen. The range then is offset by the minimum value. 
+*/ 
+
+ispeedmin = i(&lt;speed_0&gt;)
+ispeedmax = i(&lt;speed_1&gt;)
+;swap if min&lt;max
+if ispeedmin&gt;ispeedmax then
+	ispeedtemp = ispeedmax ;a temporary holder is needed for swapping the values of max and min around.
+	; If I assign MAX the value of MIN, and THEN MIN the value of MAX ... 
+	;min will of course maintain the same value.
+	ispeedmax = ispeedmin
+	ispeedmin = ispeedtemp
+endif
+
+
+ispeedmax = ispeedmax-ispeedmin ;find the range.
+ispeed rnd31 ispeedmax, 0, 0   ;rnd31 with seed0 (third arg) will use a seed from the system clock.
+ispeed = abs(ispeed)
+ispeed = ispeed+ispeedmin ;add the offset.
+
+;-------------------------
+
+; These values give the most satisfying results. The &lt;rev&gt; control effectively shapes the probability curve. 
+
+
+irev = rnd(1)
+iexp pow i(&lt;rev&gt;), 1.5
+iexp = iexp*3
+irev pow irev, iexp
+
+
+if irev &lt; 0.5 then
+	;a negative speed will reverse the playback but...
+	ispeed = ispeed * (-1)   ;wrap needs to be on if reversed ... annoyingly this of course leads to looping but it still sounds good!
+	iwrap = 1
+else
+	ispeed = ispeed
+	iwrap = 0
+endif
+
+;-------------------------
+
+/* The length of audible playback is determined by a expseg opcode further on. The audible segment is:
+
+iamp, p3/x, iamp...then a decay to zero is added. X is the value found in this current section. It will range from 0 to 30. 
+30 will of course provide the smallest chunks. It is also possible to extend or contract the length by modifying the 
+range of the sound object. 
+
+*/
+
+ilengthmin = i(&lt;length_0&gt;)*30
+ilengthmin = 30-ilengthmin  ;inverted so that a 0 value will be the smallest size and vice versa. 
+ilengthmax = i(&lt;length_1&gt;)*30
+ilengthmax = 30-ilengthmax
+
+
+
+if ilengthmin&gt;ilengthmax then
+	ilengthtemp = ilengthmax
+	ilengthmax = ilengthmin
+	ilengthmin = ilengthtemp
+endif
+
+ilengthmax = ilengthmax-ilengthmin
+ilength rnd31 ilengthmax, 0, 0
+ilength = abs(ilength)
+ilength = ilength+ilengthmin
+
+
+;--------------------------------
+
+iampmin = i(&lt;amp_0&gt;)
+iampmax = i(&lt;amp_1&gt;)
+if iampmin&gt;iampmax then
+	iamptemp = iampmax
+	iampmax = iampmin
+	iampmin = iamptemp
+endif
+iamp rnd31 iampmax, 0, 0
+iamp = abs(iamp)
+iamp = iamp+iampmin
+
+;it is recognised that iamp could very well equal 0. This is something I find acceptable.
+
+;------------------------------
+
+
+ipanmin = i(&lt;pan_0&gt;)
+ipanmax = i(&lt;pan_1&gt;)
+if ipanmin&gt;ipanmax then
+	ipantemp = ipanmax 
+	ipanmax = ipanmin
+	ipanmin = ipantemp
+endif
+ipan rnd31 ipanmax, 0, 0
+ipan = abs(ipan)
+ipan = ipan+ipanmin
+
+
+
+;------------------------------
+;p4 is a string generated by the python object
+ichn filenchnls p4
+if ichn = 1 then   ;if mono then diskin2 will use just one signal and copy this to both output channels
+
+	asigL diskin2 p4, ispeed, 0, iwrap
+	asigR = asigL*0.5
+	asigL = asigL * 0.5
+else
+
+	asigL, asigR diskin2 p4, ispeed, 0, iwrap
+endif
+
+;------------------------------
+
+
+asigL = asigL * (1-ipan)
+asigR = asigR * ipan
+
+;-----------------------------
+
+aenv expsega iamp, p3/ilength, iamp, 0.02, 0.001, 0, 0.0001   ;Finally this controls the grain size and amplitude. Now view the Python object.
+
+outs asigL*aenv, asigR*aenv
+
+
+</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSliderBank'>
+            <objectName>speed</objectName>
+            <x>77</x>
+            <y>27</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>4.0</maximum>
+            <resolution>0.1</resolution>
+            <sliderWidth>150</sliderWidth>
+            <gap>5</gap>
+            <randomizable>true</randomizable>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>4.0</maximum>
+              <resolution>0.1</resolution>
+              <value>0.3</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>4.0</maximum>
+              <resolution>0.1</resolution>
+              <value>4.0</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>rev</objectName>
+            <x>77</x>
+            <y>123</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <value>0.3</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>108</y>
+            <label>Rev amt</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSliderBank'>
+            <objectName>length</objectName>
+            <x>77</x>
+            <y>180</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <sliderWidth>150</sliderWidth>
+            <gap>5</gap>
+            <randomizable>true</randomizable>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>1.0</maximum>
+              <resolution>0.01</resolution>
+              <value>0.03</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>1.0</maximum>
+              <resolution>0.01</resolution>
+              <value>0.07</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>168</y>
+            <label>Chunk size min/max</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>8</y>
+            <label>Pitch min/max</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSliderBank'>
+            <objectName>amp</objectName>
+            <x>77</x>
+            <y>291</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <sliderWidth>150</sliderWidth>
+            <gap>5</gap>
+            <randomizable>true</randomizable>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>1.0</maximum>
+              <resolution>0.1</resolution>
+              <value>0.2</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>1.0</maximum>
+              <resolution>0.1</resolution>
+              <value>0.90000004</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>269</y>
+            <label>Amp min/max</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSliderBank'>
+            <objectName>pan</objectName>
+            <x>77</x>
+            <y>402</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.1</resolution>
+            <sliderWidth>150</sliderWidth>
+            <gap>5</gap>
+            <randomizable>true</randomizable>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>1.0</maximum>
+              <resolution>0.1</resolution>
+              <value>0.0</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+            <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+              <objectName></objectName>
+              <x>0</x>
+              <y>0</y>
+              <automationAllowed>true</automationAllowed>
+              <minimum>0.0</minimum>
+              <maximum>1.0</maximum>
+              <resolution>0.1</resolution>
+              <value>1.0</value>
+              <sliderWidth>150</sliderWidth>
+              <randomizable>true</randomizable>
+            </bsbObject>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>390</y>
+            <label>Pan left/right</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>366</y>
+            <label>-------------------------------------------------</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>245</y>
+            <label>-------------------------------------------------</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>151</y>
+            <label>-------------------------------------------------</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>77</x>
+            <y>92</y>
+            <label>-------------------------------------------------</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='-233345329' name='amp_0' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.2'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-23296' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.2'/>
+              <linePoint x='8.666667' y='0.1'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-233345327' name='amp_1' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.90000004'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.90000004'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-237450085' name='length_0' label='' min='0.0' max='1.0' resolution='0.01' automationEnabled='false' value='0.03'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.01' color='-16741632' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.08'/>
+              <linePoint x='3.25' y='0.089999996'/>
+              <linePoint x='3.6260166' y='0.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-237450083' name='length_1' label='' min='0.0' max='1.0' resolution='0.01' automationEnabled='false' value='0.07'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.01' color='-23296' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.0'/>
+              <linePoint x='3.5' y='0.95'/>
+              <linePoint x='5.8882117' y='0.08'/>
+              <linePoint x='6.48812' y='0.24'/>
+              <linePoint x='7.111847' y='0.81'/>
+              <linePoint x='7.2365913' y='0.03'/>
+              <linePoint x='7.735574' y='0.06'/>
+              <linePoint x='7.967244' y='1.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-233345325' name='pan_0' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.0'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-233345323' name='pan_1' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='1.0'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.0'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-237450087' name='rev' label='' min='0.0' max='1.0' resolution='0.1' automationEnabled='false' value='0.3'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.1' color='-3328256' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.3'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-233345321' name='speed_0' label='' min='0.0' max='4.0' resolution='0.1' automationEnabled='false' value='0.3'>
+            <line name='' version='2' max='4.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.3'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-233345319' name='speed_1' label='' min='0.0' max='4.0' resolution='0.1' automationEnabled='false' value='4.0'>
+            <line name='' version='2' max='4.0' min='0.0' resolution='0.1' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='4.0'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets' currentPresetUniqueId='931945869' currentPresetModified='false'>
+          <preset name='Full' uniqueId='931945869'>
+            <setting name='amp'>0.16250001:0.7</setting>
+            <setting name='length'>0.089999996:0.95357144</setting>
+            <setting name='pan'>0.1:0.90000004</setting>
+            <setting name='rev'>0.5</setting>
+            <setting name='speed'>0.4:3.6000001</setting>
+          </preset>
+          <preset name='Reversed' uniqueId='931945871'>
+            <setting name='amp'>0.1:1.0</setting>
+            <setting name='length'>0.099999994:0.48999998</setting>
+            <setting name='pan'>0.0:1.0</setting>
+            <setting name='rev'>0.90000004</setting>
+            <setting name='speed'>0.1:3.4</setting>
+          </preset>
+          <preset name='Short-High' uniqueId='931945870'>
+            <setting name='amp'>0.6:1.0</setting>
+            <setting name='length'>0.0:0.01</setting>
+            <setting name='pan'>0.0:1.0</setting>
+            <setting name='rev'>0.5</setting>
+            <setting name='speed'>3.8:4.0</setting>
+          </preset>
+          <preset name='Short-low' uniqueId='931945872'>
+            <setting name='amp'>0.6:1.0</setting>
+            <setting name='length'>0.0:0.01</setting>
+            <setting name='pan'>0.0:1.0</setting>
+            <setting name='rev'>0.5</setting>
+            <setting name='speed'>0.0:0.8</setting>
+          </preset>
+        </presetGroup>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+  </arrangement>
+  <mixer>
+    <enabled>false</enabled>
+    <extraRenderTime>0.0</extraRenderTime>
+    <channelList list='channels'>
+      <channel>
+        <name>1</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='-816931221' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+    </channelList>
+    <channelList list='subChannels'/>
+    <channel>
+      <name>Master</name>
+      <outChannel>Master</outChannel>
+      <level>0.0</level>
+      <muted>false</muted>
+      <solo>false</solo>
+      <effectsChain bin='pre'/>
+      <effectsChain bin='post'/>
+      <parameter uniqueId='-816931226' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+        <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+          <linePoint x='0.0' y='0.0'/>
+        </line>
+      </parameter>
+    </channel>
+  </mixer>
+  <tables></tables>
+  <soundObjectLibrary>
+    <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+      <subjectiveDuration>4.1764708</subjectiveDuration>
+      <startTime>0.0</startTime>
+      <name>Texture-pack</name>
+      <backgroundColor>-12566464</backgroundColor>
+      <timeBehavior>0</timeBehavior>
+      <noteProcessorChain/>
+      <code>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+#&quot;score = &quot;i1 0 2 &quot;/home/andy/sounds/tabla_1.wav&quot;
+
+import os
+import random
+import glob
+
+
+listing = glob.glob(&apos;&lt;folder&gt;/*.wav&apos;)
+size = len(listing)
+
+for i in range(&lt;notes&gt;):
+	f = random.randint(0, size-1)
+	l = random.random()
+	l *= &lt;pack&gt;
+	score += &quot;i1 %f 100 \&quot;%s\&quot;\n&quot; % ( i*l, listing[f])
+
+</code>
+      <commandLine/>
+      <isExternal>false</isExternal>
+      <graphicInterface editEnabled='false'>
+        <bsbObject type='blue.orchestra.blueSynthBuilder.BSBTextField'>
+          <objectName>folder</objectName>
+          <x>408</x>
+          <y>65</y>
+          <value>/media/STORAGE/quicksounds</value>
+          <textFieldWidth>100</textFieldWidth>
+        </bsbObject>
+        <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+          <objectName>notes</objectName>
+          <x>251</x>
+          <y>73</y>
+          <automationAllowed>true</automationAllowed>
+          <minimum>0.0</minimum>
+          <maximum>100.0</maximum>
+          <resolution>1.0</resolution>
+          <value>93.0</value>
+          <sliderHeight>150</sliderHeight>
+          <randomizable>true</randomizable>
+        </bsbObject>
+        <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+          <objectName>pack</objectName>
+          <x>415</x>
+          <y>133</y>
+          <automationAllowed>true</automationAllowed>
+          <minimum>0.0</minimum>
+          <maximum>1.0</maximum>
+          <resolution>0.1</resolution>
+          <value>1.0</value>
+          <sliderWidth>150</sliderWidth>
+          <randomizable>true</randomizable>
+        </bsbObject>
+      </graphicInterface>
+      <presetGroup name='Presets'/>
+      <syntaxType>Python</syntaxType>
+    </soundObject>
+  </soundObjectLibrary>
+  <globalOrcSco>
+    <globalOrc></globalOrc>
+    <globalSco></globalSco>
+  </globalOrcSco>
+  <opcodeList/>
+  <liveData>
+    <commandLine>csound -Wdo devaudio -L stdin</commandLine>
+    <commandLineEnabled>false</commandLineEnabled>
+    <commandLineOverride>false</commandLineOverride>
+  </liveData>
+  <soundObject type='blue.soundObject.PolyObject'>
+    <subjectiveDuration>2.0</subjectiveDuration>
+    <startTime>0.0</startTime>
+    <name>root</name>
+    <backgroundColor>-10066279</backgroundColor>
+    <timeBehavior>0</timeBehavior>
+    <noteProcessorChain/>
+    <isRoot>true</isRoot>
+    <pixelSecond>8</pixelSecond>
+    <defaultHeightIndex>0</defaultHeightIndex>
+    <snapEnabled>false</snapEnabled>
+    <snapValue>1.0</snapValue>
+    <timeDisplay>0</timeDisplay>
+    <timeUnit>5</timeUnit>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.ObjectBuilder' editEnabled='true'>
+        <subjectiveDuration>68.875</subjectiveDuration>
+        <startTime>2.875</startTime>
+        <name>Texture-pack</name>
+        <backgroundColor>-12566464</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <code>
+import os
+import random
+import glob
+
+
+listing = glob.glob(&apos;&lt;folder&gt;/*.wav&apos;) #find all the .wav files in the path specified by &lt;folder&gt;. Place these into a list
+size = len(listing)  
+
+for i in range(&lt;notes&gt;):
+	f = random.randint(0, size-1) #choose a sound file
+	l = random.random() #Choose a random length
+	l *= &lt;pack&gt;#increase or decrease the length according to pack
+	score += &quot;i1 %f %f \&quot;%s\&quot;\n&quot; % ( i*l, blueDuration, listing[f]) 
+
+</code>
+        <commandLine/>
+        <isExternal>false</isExternal>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBTextField'>
+            <objectName>folder</objectName>
+            <x>87</x>
+            <y>17</y>
+            <value>/media/STORAGE/quicksounds/</value>
+            <textFieldWidth>400</textFieldWidth>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>notes</objectName>
+            <x>5</x>
+            <y>33</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>300.0</maximum>
+            <resolution>1.0</resolution>
+            <value>56.0</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>pack</objectName>
+            <x>87</x>
+            <y>93</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>0.3</maximum>
+            <resolution>0.001</resolution>
+            <value>0.022000002</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>15</x>
+            <y>17</y>
+            <label>No. voices</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>87</x>
+            <y>76</y>
+            <label>Scatter</label>
+          </bsbObject>
+        </graphicInterface>
+        <presetGroup name='Presets'/>
+        <syntaxType>Python</syntaxType>
+      </soundObject>
+      <parameterId>-816931200</parameterId>
+      <parameterId>-816931202</parameterId>
+    </soundLayer>
+  </soundObject>
+  <scratchPadData>
+    <isWordWrapEnabled>true</isWordWrapEnabled>
+    <scratchText>print ispeed</scratchText>
+  </scratchPadData>
+  <noteProcessorChainMap/>
+  <renderStartTime>2.875</renderStartTime>
+  <renderEndTime>18.5</renderEndTime>
+  <markersList/>
+  <loopRendering>true</loopRendering>
+  <tempo>
+    <enabled>false</enabled>
+    <visible>false</visible>
+    <line name='' version='2' max='240.0' min='30.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+      <linePoint x='0.0' y='60.0'/>
+      <linePoint x='10.8529415' y='51.000008'/>
+      <linePoint x='15.705882' y='46.333336'/>
+      <linePoint x='16.058823' y='200.33333'/>
+    </line>
+  </tempo>
+  <midiInputProcessor>
+    <keyMapping>PCH</keyMapping>
+    <velMapping>MIDI</velMapping>
+    <pitchConstant/>
+    <ampConstant/>
+    <scale>
+      <scaleName>12TET</scaleName>
+      <baseFrequency>261.62558</baseFrequency>
+      <octave>2.0</octave>
+      <ratios>
+        <ratio>1.0</ratio>
+        <ratio>1.0594631</ratio>
+        <ratio>1.122462</ratio>
+        <ratio>1.1892071</ratio>
+        <ratio>1.2599211</ratio>
+        <ratio>1.3348398</ratio>
+        <ratio>1.4142135</ratio>
+        <ratio>1.4983071</ratio>
+        <ratio>1.587401</ratio>
+        <ratio>1.6817929</ratio>
+        <ratio>1.7817974</ratio>
+        <ratio>1.8877486</ratio>
+      </ratios>
+    </scale>
+  </midiInputProcessor>
+</blueData>

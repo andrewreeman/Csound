@@ -1,0 +1,1108 @@
+<blueData version='2.1.9'>
+  <projectProperties>
+    <title></title>
+    <author></author>
+    <notes></notes>
+    <sampleRate>44100</sampleRate>
+    <ksmps>10</ksmps>
+    <channels>2</channels>
+    <diskSampleRate>44100</diskSampleRate>
+    <diskKsmps>10</diskKsmps>
+    <diskChannels>2</diskChannels>
+    <useAudioOut>true</useAudioOut>
+    <useAudioIn>false</useAudioIn>
+    <useMidiIn>false</useMidiIn>
+    <useMidiOut>false</useMidiOut>
+    <noteAmpsEnabled>true</noteAmpsEnabled>
+    <outOfRangeEnabled>true</outOfRangeEnabled>
+    <warningsEnabled>true</warningsEnabled>
+    <benchmarkEnabled>true</benchmarkEnabled>
+    <advancedSettings></advancedSettings>
+    <completeOverride>false</completeOverride>
+    <fileName></fileName>
+    <askOnRender>false</askOnRender>
+    <diskNoteAmpsEnabled>true</diskNoteAmpsEnabled>
+    <diskOutOfRangeEnabled>true</diskOutOfRangeEnabled>
+    <diskWarningsEnabled>true</diskWarningsEnabled>
+    <diskBenchmarkEnabled>true</diskBenchmarkEnabled>
+    <diskAdvancedSettings></diskAdvancedSettings>
+    <diskCompleteOverride>false</diskCompleteOverride>
+    <diskAlwaysRenderEntireProject>false</diskAlwaysRenderEntireProject>
+    <csladspaSettings>
+      <name/>
+      <maker/>
+      <uniqueId>0</uniqueId>
+      <copyright/>
+      <portDefinitionList/>
+      <enabled>false</enabled>
+    </csladspaSettings>
+  </projectProperties>
+  <arrangement>
+    <instrumentAssignment arrangementId='1' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>fm-twiddles</name>
+        <comment></comment>
+        <globalOrc>gi_tab_&lt;INSTR_ID&gt;	ftgen 0, 0, 8192, 10, 1, 0.5, 0, 0.25, 0, 0.125
+gi_sine_&lt;INSTR_ID&gt;	ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+********** FM-Twiddles ***********
+
+The idea behind FM-Twiddles was to create a distinctively different sound from FM-Morph 
+but still use two FM opcodes for the main functioning. The first fm unit will most likely (depending
+upon the user parameters) be quite noisy, and contain a broad spectra, in character. 
+The second will be more harmonic with a duller spectrum. 
+*** The score parameters are the same as in fm-morph.
+
+*** The interface controls are:
+
+The modulation rate in a range of 0 to 8.
+The modulation index in a range of 0 to 10.
+The mix level between the `noise&apos; fm and `clean&apos; fm.
+
+All controls are automatable.
+
+*/
+
+
+
+
+;-----------------------------
+
+;These are the same mechanisms as found in fm-morph
+
+irand_note random 100, 800
+kcps = (p4 == 0 ? irand_note : p4)
+iamp = (p5 == 0 ? 1 : p5)
+icar = (p6 == 0 ? 1 : p6)
+
+;-----------------------------
+
+
+kmod = &lt;mod&gt;
+kndx_light = &lt;ind&gt; ;kndx_light is used for afm2 which will be the `clean&apos; synth.
+kndx_noise = kndx_light*10 ;a much higher index is used for fm1 which will be the `noise&apos; synth&apos;
+ifn = gi_tab_&lt;INSTR_ID&gt; ;a complex table.
+
+;-----------------------------
+;the modulation in afm2 is kept to an integer so that it will be harmonic.
+;the amplitude of afm1 needed to be reduced by half due to its excessive character.
+;afm is the sum of both the synths. Each are mixed according to the mix level parameter.
+afm foscil 0dbfs*iamp*0.5, kcps, icar, kmod, kndx_noise, ifn
+afm2 foscil 0dbfs*iamp, kcps, icar, int(kmod), 1+kndx_light, ifn
+afm = (afm*(1-&lt;xfade&gt;))+(afm2*-&lt;xfade&gt;)
+;----------------------------
+
+
+;---------------------------
+;iamp also controls the brightness
+afm tone afm, (iamp*10200)+800
+;---------------------------
+
+
+;--------------------------
+/*This oscillator will be used for controlling the pan positions. 
+A random phase is chosen so that the pan can start from anywhere in the stereo field.
+The pan rate is set to 1/(p3/x) where x is an integer. This will mean that `x&apos; number of oscillations will
+occur between the left and right speakers.  
+x is chosen from the random phase. This is squared so as to be biased towards smaller numbers. 
+
+*/
+ipan_rand_phase random 0, 1
+
+inum_oscil = int(((ipan_rand_phase*ipan_rand_phase)*8)+1) 
+kpan oscili 0.5, 1/(p3/inum_oscil), gi_sine_&lt;INSTR_ID&gt;, ipan_rand_phase
+kpan = kpan + 0.5
+;--------------------------
+
+
+inum_filt = sqrt(ipan_rand_phase)*64 ;a range of 0 to 64 filters. Biased towards higher numbers
+ioffset = 1+(ipan_rand_phase*0.2) ;a range of 0.9 and 1.1 for the numbers of filters afmR will have
+
+afmL phaser1 afm, kpan*50, inum_filt, 0.2
+afmR phaser1 afm, kpan*50, int(inum_filt*ioffset), 0.1
+;combine with the original signal to create a phaser effect
+afmL = (afmL+afm)*0.5
+afmR = (afmR+ afm)*0.5
+
+;-------------------------
+
+;the panning is scaled to be a `softer&apos; pan. between left centre and right centre.
+afmL = afmL*(1-(kpan*0.3))
+afmR = afmR * (0.7+(kpan*0.3))
+
+;------------------------
+;the attack of the final sound is determined by the overall volume. 
+;the decay is kept as a constant.
+iatt pow iamp, 0.25
+kenv1 linen 1, (1-iatt)+0.001, p3, 0.3
+;-----------------------
+
+;The `active&apos; mechanism is used as in FM-Morph as before
+
+kact active &lt;INSTR_ID&gt; ;determine at krate how many instances of this instrument are currently active
+kact = 1/kact ;kact is used as a final scaling of amix. This ensufm no clipping due to simultaneous instruments
+outs afmL*kact*kenv1, afmR*kact*kenv1</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>mod</objectName>
+            <x>172</x>
+            <y>36</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>8.0</maximum>
+            <resolution>0.01</resolution>
+            <value>7.119962</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>ind</objectName>
+            <x>255</x>
+            <y>30</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.01</resolution>
+            <value>1.7099811</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>193</x>
+            <y>21</y>
+            <label>Mod-rate</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>268</x>
+            <y>17</y>
+            <label>Mod index</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>xfade</objectName>
+            <x>65</x>
+            <y>272</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>4.7306727E-8</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>65</x>
+            <y>254</y>
+            <label>fm-1-noise</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>214</x>
+            <y>255</y>
+            <label>fm-2-clean</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='-292965580' name='ind' label='' min='0.0' max='10.0' resolution='0.01' automationEnabled='false' value='1.7099811'>
+            <line name='' version='2' max='10.0' min='0.0' resolution='0.01' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='5.9'/>
+              <linePoint x='0.85714287' y='3.6799998'/>
+              <linePoint x='1.1607143' y='5.77'/>
+              <linePoint x='2.232143' y='4.62'/>
+              <linePoint x='4.482143' y='1.28'/>
+              <linePoint x='5.107143' y='10.0'/>
+              <linePoint x='5.696429' y='0.9'/>
+              <linePoint x='12.107142' y='6.67'/>
+              <linePoint x='12.785714' y='6.79'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='966628415' name='mod' label='' min='0.0' max='8.0' resolution='0.01' automationEnabled='false' value='7.119962'>
+            <line name='' version='2' max='8.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='7.119962'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='-292965582' name='xfade' label='' min='0.0' max='1.0' resolution='0.01' automationEnabled='false' value='4.7306727E-8'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='4.7306727E-8'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='2' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>fm-twiddles</name>
+        <comment></comment>
+        <globalOrc>gi_tab_&lt;INSTR_ID&gt;	ftgen 0, 0, 8192, 10, 1, 0.5, 0, 0.25, 0, 0.125
+gi_sine_&lt;INSTR_ID&gt;	ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+********** FM-Twiddles ***********
+
+The idea behind FM-Twiddles was to create a distinctively different sound from FM-Morph 
+but still use two FM opcodes for the main functioning. The first fm unit will most likely (depending
+upon the user parameters) be quite noisy, and contain a broad spectra, in character. 
+The second will be more harmonic with a duller spectrum. 
+*** The score parameters are the same as in fm-morph.
+
+*** The interface controls are:
+
+The modulation rate in a range of 0 to 8.
+The modulation index in a range of 0 to 10.
+The mix level between the `noise&apos; fm and `clean&apos; fm.
+
+All controls are automatable.
+
+*/
+
+
+
+
+;-----------------------------
+
+;These are the same mechanisms as found in fm-morph
+
+irand_note random 100, 800
+kcps = (p4 == 0 ? irand_note : p4)
+iamp = (p5 == 0 ? 1 : p5)
+icar = (p6 == 0 ? 1 : p6)
+
+;-----------------------------
+
+
+kmod = &lt;mod&gt;
+kndx_light = &lt;ind&gt; ;kndx_light is used for afm2 which will be the `clean&apos; synth.
+kndx_noise = kndx_light*10 ;a much higher index is used for fm1 which will be the `noise&apos; synth&apos;
+ifn = gi_tab_&lt;INSTR_ID&gt; ;a complex table.
+
+;-----------------------------
+;the modulation in afm2 is kept to an integer so that it will be harmonic.
+;the amplitude of afm1 needed to be reduced by half due to its excessive character.
+;afm is the sum of both the synths. Each are mixed according to the mix level parameter.
+afm foscil 0dbfs*iamp*0.5, kcps, icar, kmod, kndx_noise, ifn
+afm2 foscil 0dbfs*iamp, kcps, icar, int(kmod), 1+kndx_light, ifn
+afm = (afm*(1-&lt;xfade&gt;))+(afm2*-&lt;xfade&gt;)
+;----------------------------
+
+
+;---------------------------
+;iamp also controls the brightness
+afm tone afm, (iamp*10200)+800
+;---------------------------
+
+
+;--------------------------
+/*This oscillator will be used for controlling the pan positions. 
+A random phase is chosen so that the pan can start from anywhere in the stereo field.
+The pan rate is set to 1/(p3/x) where x is an integer. This will mean that `x&apos; number of oscillations will
+occur between the left and right speakers.  
+x is chosen from the random phase. This is squared so as to be biased towards smaller numbers. 
+
+*/
+ipan_rand_phase random 0, 1
+
+inum_oscil = int(((ipan_rand_phase*ipan_rand_phase)*8)+1) 
+kpan oscili 0.5, 1/(p3/inum_oscil), gi_sine_&lt;INSTR_ID&gt;, ipan_rand_phase
+kpan = kpan + 0.5
+;--------------------------
+
+
+inum_filt = sqrt(ipan_rand_phase)*64 ;a range of 0 to 64 filters. Biased towards higher numbers
+ioffset = 1+(ipan_rand_phase*0.2) ;a range of 0.9 and 1.1 for the numbers of filters afmR will have
+
+afmL phaser1 afm, kpan*50, inum_filt, 0.2
+afmR phaser1 afm, kpan*50, int(inum_filt*ioffset), 0.1
+;combine with the original signal to create a phaser effect
+afmL = (afmL+afm)*0.5
+afmR = (afmR+ afm)*0.5
+
+;-------------------------
+
+;the panning is scaled to be a `softer&apos; pan. between left centre and right centre.
+afmL = afmL*(1-(kpan*0.3))
+afmR = afmR * (0.7+(kpan*0.3))
+
+;------------------------
+;the attack of the final sound is determined by the overall volume. 
+;the decay is kept as a constant.
+iatt pow iamp, 0.25
+kenv1 linen 1, (1-iatt)+0.001, p3, 0.3
+;-----------------------
+
+;The `active&apos; mechanism is used as in FM-Morph as before
+
+kact active &lt;INSTR_ID&gt; ;determine at krate how many instances of this instrument are currently active
+kact = 1/kact ;kact is used as a final scaling of amix. This ensufm no clipping due to simultaneous instruments
+outs afmL*kact*kenv1, afmR*kact*kenv1</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>mod</objectName>
+            <x>172</x>
+            <y>36</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>8.0</maximum>
+            <resolution>0.01</resolution>
+            <value>7.0499997</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>ind</objectName>
+            <x>255</x>
+            <y>30</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.01</resolution>
+            <value>1.03</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>193</x>
+            <y>21</y>
+            <label>Mod-rate</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>268</x>
+            <y>17</y>
+            <label>Mod index</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>xfade</objectName>
+            <x>65</x>
+            <y>272</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.48999998</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>65</x>
+            <y>254</y>
+            <label>fm-1-noise</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>214</x>
+            <y>255</y>
+            <label>fm-2-clean</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1100776904' name='ind' label='' min='0.0' max='10.0' resolution='0.01' automationEnabled='false' value='1.03'>
+            <line name='' version='2' max='10.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.03'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100776902' name='mod' label='' min='0.0' max='8.0' resolution='0.01' automationEnabled='false' value='7.0499997'>
+            <line name='' version='2' max='8.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='7.0499997'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100776906' name='xfade' label='' min='0.0' max='1.0' resolution='0.01' automationEnabled='false' value='0.48999998'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.48999998'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='3' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>fm-twiddles</name>
+        <comment></comment>
+        <globalOrc>gi_tab_&lt;INSTR_ID&gt;	ftgen 0, 0, 8192, 10, 1, 0.5, 0, 0.25, 0, 0.125
+gi_sine_&lt;INSTR_ID&gt;	ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+********** FM-Twiddles ***********
+
+The idea behind FM-Twiddles was to create a distinctively different sound from FM-Morph 
+but still use two FM opcodes for the main functioning. The first fm unit will most likely (depending
+upon the user parameters) be quite noisy, and contain a broad spectra, in character. 
+The second will be more harmonic with a duller spectrum. 
+*** The score parameters are the same as in fm-morph.
+
+*** The interface controls are:
+
+The modulation rate in a range of 0 to 8.
+The modulation index in a range of 0 to 10.
+The mix level between the `noise&apos; fm and `clean&apos; fm.
+
+All controls are automatable.
+
+*/
+
+
+
+
+;-----------------------------
+
+;These are the same mechanisms as found in fm-morph
+
+irand_note random 100, 800
+kcps = (p4 == 0 ? irand_note : p4)
+iamp = (p5 == 0 ? 1 : p5)
+icar = (p6 == 0 ? 1 : p6)
+
+;-----------------------------
+
+
+kmod = &lt;mod&gt;
+kndx_light = &lt;ind&gt; ;kndx_light is used for afm2 which will be the `clean&apos; synth.
+kndx_noise = kndx_light*10 ;a much higher index is used for fm1 which will be the `noise&apos; synth&apos;
+ifn = gi_tab_&lt;INSTR_ID&gt; ;a complex table.
+
+;-----------------------------
+;the modulation in afm2 is kept to an integer so that it will be harmonic.
+;the amplitude of afm1 needed to be reduced by half due to its excessive character.
+;afm is the sum of both the synths. Each are mixed according to the mix level parameter.
+afm foscil 0dbfs*iamp*0.5, kcps, icar, kmod, kndx_noise, ifn
+afm2 foscil 0dbfs*iamp, kcps, icar, int(kmod), 1+kndx_light, ifn
+afm = (afm*(1-&lt;xfade&gt;))+(afm2*-&lt;xfade&gt;)
+;----------------------------
+
+
+;---------------------------
+;iamp also controls the brightness
+afm tone afm, (iamp*10200)+800
+;---------------------------
+
+
+;--------------------------
+/*This oscillator will be used for controlling the pan positions. 
+A random phase is chosen so that the pan can start from anywhere in the stereo field.
+The pan rate is set to 1/(p3/x) where x is an integer. This will mean that `x&apos; number of oscillations will
+occur between the left and right speakers.  
+x is chosen from the random phase. This is squared so as to be biased towards smaller numbers. 
+
+*/
+ipan_rand_phase random 0, 1
+
+inum_oscil = int(((ipan_rand_phase*ipan_rand_phase)*8)+1) 
+kpan oscili 0.5, 1/(p3/inum_oscil), gi_sine_&lt;INSTR_ID&gt;, ipan_rand_phase
+kpan = kpan + 0.5
+;--------------------------
+
+
+inum_filt = sqrt(ipan_rand_phase)*64 ;a range of 0 to 64 filters. Biased towards higher numbers
+ioffset = 1+(ipan_rand_phase*0.2) ;a range of 0.9 and 1.1 for the numbers of filters afmR will have
+
+afmL phaser1 afm, kpan*50, inum_filt, 0.2
+afmR phaser1 afm, kpan*50, int(inum_filt*ioffset), 0.1
+;combine with the original signal to create a phaser effect
+afmL = (afmL+afm)*0.5
+afmR = (afmR+ afm)*0.5
+
+;-------------------------
+
+;the panning is scaled to be a `softer&apos; pan. between left centre and right centre.
+afmL = afmL*(1-(kpan*0.3))
+afmR = afmR * (0.7+(kpan*0.3))
+
+;------------------------
+;the attack of the final sound is determined by the overall volume. 
+;the decay is kept as a constant.
+iatt pow iamp, 0.25
+kenv1 linen 1, (1-iatt)+0.001, p3, 0.3
+;-----------------------
+
+;The `active&apos; mechanism is used as in FM-Morph as before
+
+kact active &lt;INSTR_ID&gt; ;determine at krate how many instances of this instrument are currently active
+kact = 1/kact ;kact is used as a final scaling of amix. This ensufm no clipping due to simultaneous instruments
+outs afmL*kact*kenv1, afmR*kact*kenv1</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>mod</objectName>
+            <x>172</x>
+            <y>36</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>8.0</maximum>
+            <resolution>0.01</resolution>
+            <value>4.529952</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>ind</objectName>
+            <x>255</x>
+            <y>30</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.01</resolution>
+            <value>1.2000135</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>193</x>
+            <y>21</y>
+            <label>Mod-rate</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>268</x>
+            <y>17</y>
+            <label>Mod index</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>xfade</objectName>
+            <x>65</x>
+            <y>272</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.5099975</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>65</x>
+            <y>254</y>
+            <label>fm-1-noise</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>214</x>
+            <y>255</y>
+            <label>fm-2-clean</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1100776912' name='ind' label='' min='0.0' max='10.0' resolution='0.01' automationEnabled='false' value='1.2000135'>
+            <line name='' version='2' max='10.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='1.2000135'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100776910' name='mod' label='' min='0.0' max='8.0' resolution='0.01' automationEnabled='false' value='4.529952'>
+            <line name='' version='2' max='8.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='4.529952'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100776914' name='xfade' label='' min='0.0' max='1.0' resolution='0.01' automationEnabled='false' value='0.5099975'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.5099975'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+    <instrumentAssignment arrangementId='4' isEnabled='true'>
+      <instrument type='blue.orchestra.BlueSynthBuilder' editEnabled='true'>
+        <name>fm-twiddles</name>
+        <comment></comment>
+        <globalOrc>gi_tab_&lt;INSTR_ID&gt;	ftgen 0, 0, 8192, 10, 1, 0.5, 0, 0.25, 0, 0.125
+gi_sine_&lt;INSTR_ID&gt;	ftgen 0, 0, 4096, 10, 1
+</globalOrc>
+        <globalSco/>
+        <instrumentText>/*
+
+********** FM-Twiddles ***********
+
+The idea behind FM-Twiddles was to create a distinctively different sound from FM-Morph 
+but still use two FM opcodes for the main functioning. The first fm unit will most likely (depending
+upon the user parameters) be quite noisy, and contain a broad spectra, in character. 
+The second will be more harmonic with a duller spectrum. 
+*** The score parameters are the same as in fm-morph.
+
+*** The interface controls are:
+
+The modulation rate in a range of 0 to 8.
+The modulation index in a range of 0 to 10.
+The mix level between the `noise&apos; fm and `clean&apos; fm.
+
+All controls are automatable.
+
+*/
+
+
+
+
+;-----------------------------
+
+;These are the same mechanisms as found in fm-morph
+
+irand_note random 100, 800
+kcps = (p4 == 0 ? irand_note : p4)
+iamp = (p5 == 0 ? 1 : p5)
+icar = (p6 == 0 ? 1 : p6)
+
+;-----------------------------
+
+
+kmod = &lt;mod&gt;
+kndx_light = &lt;ind&gt; ;kndx_light is used for afm2 which will be the `clean&apos; synth.
+kndx_noise = kndx_light*10 ;a much higher index is used for fm1 which will be the `noise&apos; synth&apos;
+ifn = gi_tab_&lt;INSTR_ID&gt; ;a complex table.
+
+;-----------------------------
+;the modulation in afm2 is kept to an integer so that it will be harmonic.
+;the amplitude of afm1 needed to be reduced by half due to its excessive character.
+;afm is the sum of both the synths. Each are mixed according to the mix level parameter.
+afm foscil 0dbfs*iamp*0.5, kcps, icar, kmod, kndx_noise, ifn
+afm2 foscil 0dbfs*iamp, kcps, icar, int(kmod), 1+kndx_light, ifn
+afm = (afm*(1-&lt;xfade&gt;))+(afm2*-&lt;xfade&gt;)
+;----------------------------
+
+
+;---------------------------
+;iamp also controls the brightness
+afm tone afm, (iamp*10200)+800
+;---------------------------
+
+
+;--------------------------
+/*This oscillator will be used for controlling the pan positions. 
+A random phase is chosen so that the pan can start from anywhere in the stereo field.
+The pan rate is set to 1/(p3/x) where x is an integer. This will mean that `x&apos; number of oscillations will
+occur between the left and right speakers.  
+x is chosen from the random phase. This is squared so as to be biased towards smaller numbers. 
+
+*/
+ipan_rand_phase random 0, 1
+
+inum_oscil = int(((ipan_rand_phase*ipan_rand_phase)*8)+1) 
+kpan oscili 0.5, 1/(p3/inum_oscil), gi_sine_&lt;INSTR_ID&gt;, ipan_rand_phase
+kpan = kpan + 0.5
+;--------------------------
+
+
+inum_filt = sqrt(ipan_rand_phase)*64 ;a range of 0 to 64 filters. Biased towards higher numbers
+ioffset = 1+(ipan_rand_phase*0.2) ;a range of 0.9 and 1.1 for the numbers of filters afmR will have
+
+afmL phaser1 afm, kpan*50, inum_filt, 0.2
+afmR phaser1 afm, kpan*50, int(inum_filt*ioffset), 0.1
+;combine with the original signal to create a phaser effect
+afmL = (afmL+afm)*0.5
+afmR = (afmR+ afm)*0.5
+
+;-------------------------
+
+;the panning is scaled to be a `softer&apos; pan. between left centre and right centre.
+afmL = afmL*(1-(kpan*0.3))
+afmR = afmR * (0.7+(kpan*0.3))
+
+;------------------------
+;the attack of the final sound is determined by the overall volume. 
+;the decay is kept as a constant.
+iatt pow iamp, 0.25
+kenv1 linen 1, (1-iatt)+0.001, p3, 0.3
+;-----------------------
+
+;The `active&apos; mechanism is used as in FM-Morph as before
+
+kact active &lt;INSTR_ID&gt; ;determine at krate how many instances of this instrument are currently active
+kact = 1/kact ;kact is used as a final scaling of amix. This ensufm no clipping due to simultaneous instruments
+outs afmL*kact*kenv1, afmR*kact*kenv1</instrumentText>
+        <alwaysOnInstrumentText></alwaysOnInstrumentText>
+        <graphicInterface editEnabled='false'>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBVSlider'>
+            <objectName>mod</objectName>
+            <x>172</x>
+            <y>36</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>8.0</maximum>
+            <resolution>0.01</resolution>
+            <value>4.7737427</value>
+            <sliderHeight>150</sliderHeight>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>ind</objectName>
+            <x>255</x>
+            <y>30</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>10.0</maximum>
+            <resolution>0.01</resolution>
+            <value>4.5142884</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>193</x>
+            <y>21</y>
+            <label>Mod-rate</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>268</x>
+            <y>17</y>
+            <label>Mod index</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBHSlider'>
+            <objectName>xfade</objectName>
+            <x>65</x>
+            <y>272</y>
+            <automationAllowed>true</automationAllowed>
+            <minimum>0.0</minimum>
+            <maximum>1.0</maximum>
+            <resolution>0.01</resolution>
+            <value>0.050000094</value>
+            <sliderWidth>150</sliderWidth>
+            <randomizable>true</randomizable>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>65</x>
+            <y>254</y>
+            <label>fm-1-noise</label>
+          </bsbObject>
+          <bsbObject type='blue.orchestra.blueSynthBuilder.BSBLabel'>
+            <objectName></objectName>
+            <x>214</x>
+            <y>255</y>
+            <label>fm-2-clean</label>
+          </bsbObject>
+        </graphicInterface>
+        <bsbParameterList>
+          <parameter uniqueId='1100776920' name='ind' label='' min='0.0' max='10.0' resolution='0.01' automationEnabled='true' value='4.590033'>
+            <line name='' version='2' max='10.0' min='0.0' resolution='0.01' color='-14623488' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='4.590033'/>
+              <linePoint x='14.267858' y='4.49'/>
+              <linePoint x='15.178572' y='2.44'/>
+              <linePoint x='15.482142' y='2.05'/>
+              <linePoint x='16.732143' y='0.9'/>
+              <linePoint x='18.375' y='1.79'/>
+              <linePoint x='19.625' y='6.2799997'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100776918' name='mod' label='' min='0.0' max='8.0' resolution='0.01' automationEnabled='true' value='4.5499597'>
+            <line name='' version='2' max='8.0' min='0.0' resolution='0.01' color='-16776961' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='4.5499597'/>
+              <linePoint x='9.339286' y='4.92'/>
+              <linePoint x='15.446428' y='4.31'/>
+              <linePoint x='15.821428' y='1.23'/>
+              <linePoint x='18.375' y='1.3299999'/>
+              <linePoint x='19.5' y='3.8999999'/>
+            </line>
+          </parameter>
+          <parameter uniqueId='1100776922' name='xfade' label='' min='0.0' max='1.0' resolution='0.01' automationEnabled='false' value='0.050000094'>
+            <line name='' version='2' max='1.0' min='0.0' resolution='0.01' color='-8355712' rightBound='false' endPointsLinked='false'>
+              <linePoint x='0.0' y='0.050000094'/>
+            </line>
+          </parameter>
+        </bsbParameterList>
+        <presetGroup name='Presets'/>
+        <opcodeList/>
+      </instrument>
+    </instrumentAssignment>
+  </arrangement>
+  <mixer>
+    <enabled>false</enabled>
+    <extraRenderTime>0.0</extraRenderTime>
+    <channelList list='channels'>
+      <channel>
+        <name>1</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='-489695883' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>2</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1100776908' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>3</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1100776916' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+      <channel>
+        <name>4</name>
+        <outChannel>Master</outChannel>
+        <level>0.0</level>
+        <muted>false</muted>
+        <solo>false</solo>
+        <effectsChain bin='pre'/>
+        <effectsChain bin='post'/>
+        <parameter uniqueId='1100776924' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+          <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+            <linePoint x='0.0' y='0.0'/>
+          </line>
+        </parameter>
+      </channel>
+    </channelList>
+    <channelList list='subChannels'/>
+    <channel>
+      <name>Master</name>
+      <outChannel>Master</outChannel>
+      <level>0.0</level>
+      <muted>false</muted>
+      <solo>false</solo>
+      <effectsChain bin='pre'/>
+      <effectsChain bin='post'/>
+      <parameter uniqueId='-489695886' name='Volume' label='dB' min='-96.0' max='12.0' resolution='-1.0' automationEnabled='false' value='0.0'>
+        <line name='' version='2' max='12.0' min='-96.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+          <linePoint x='0.0' y='0.0'/>
+        </line>
+      </parameter>
+    </channel>
+  </mixer>
+  <tables></tables>
+  <soundObjectLibrary/>
+  <globalOrcSco>
+    <globalOrc></globalOrc>
+    <globalSco></globalSco>
+  </globalOrcSco>
+  <opcodeList/>
+  <liveData>
+    <commandLine>csound -Wdo devaudio -L stdin</commandLine>
+    <commandLineEnabled>false</commandLineEnabled>
+    <commandLineOverride>false</commandLineOverride>
+  </liveData>
+  <soundObject type='blue.soundObject.PolyObject'>
+    <subjectiveDuration>2.0</subjectiveDuration>
+    <startTime>0.0</startTime>
+    <name>root</name>
+    <backgroundColor>-10066279</backgroundColor>
+    <timeBehavior>0</timeBehavior>
+    <noteProcessorChain/>
+    <isRoot>true</isRoot>
+    <pixelSecond>56</pixelSecond>
+    <defaultHeightIndex>0</defaultHeightIndex>
+    <snapEnabled>false</snapEnabled>
+    <snapValue>1.0</snapValue>
+    <timeDisplay>0</timeDisplay>
+    <timeUnit>5</timeUnit>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>5.267857</subjectiveDuration>
+        <startTime>18.160715</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-6750055</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 2 440 0.2
+i1 0 2 220 0.2
+i1 0 2 230 0.2</score>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>11.178572</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-6750055</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+
+for i in range(0, 10):
+
+	score += &quot;i1 %f 1 %f 0.6 \n&quot; % (i, ((i*20)+30)%300)</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>3.857143</subjectiveDuration>
+        <startTime>1.0357143</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-6750055</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i1 0 2 440 0.8</score>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>3.857143</subjectiveDuration>
+        <startTime>3.232143</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-6724096</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i2 0 2 220 0.7</score>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>12.857142</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-6724096</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+
+for i in range(0, 13):
+
+	score += &quot;i2 %f 1 %f 0.6 \n&quot; % (i, ((i*20)+80)%100)</pythonCode>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='2'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>3.857143</subjectiveDuration>
+        <startTime>4.767857</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-13382656</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i3 0 2 140 0.5</score>
+      </soundObject>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>2.0</subjectiveDuration>
+        <startTime>14.392858</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-13382656</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+
+for i in range(0, 17):
+
+	score += &quot;i3 %f 1 %f 0.7 \n&quot; % (i, ((i*20)+90)%200)</pythonCode>
+      </soundObject>
+    </soundLayer>
+    <soundLayer name='' muted='false' solo='false' heightIndex='3'>
+      <noteProcessorChain/>
+      <soundObject type='blue.soundObject.PythonObject' onLoadProcessable='false'>
+        <subjectiveDuration>4.357143</subjectiveDuration>
+        <startTime>15.553572</startTime>
+        <name>PythonObject</name>
+        <backgroundColor>-13261</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <pythonCode>#use variable blueDuration for duration from blue
+#use variable userConfigDir for user&apos;s .blue dir
+#use variable blueLibDir for blue&apos;s lib directory
+#use variable blueProjectDir for this project&apos;s directory
+#use variable score at end of script to bring score back into blue
+
+
+for i in range(0, 50):
+
+	score += &quot;i4 %f 1 %f 0.6 \n&quot; % (i, ((i*20)+90)%300)</pythonCode>
+      </soundObject>
+      <soundObject type='blue.soundObject.GenericScore'>
+        <subjectiveDuration>3.857143</subjectiveDuration>
+        <startTime>7.357143</startTime>
+        <name>GenericScore</name>
+        <backgroundColor>-13261</backgroundColor>
+        <timeBehavior>0</timeBehavior>
+        <noteProcessorChain/>
+        <score>i4 0 2 110 0.8</score>
+      </soundObject>
+      <parameterId>1100776918</parameterId>
+      <parameterId>1100776920</parameterId>
+    </soundLayer>
+  </soundObject>
+  <scratchPadData>
+    <isWordWrapEnabled>true</isWordWrapEnabled>
+    <scratchText/>
+  </scratchPadData>
+  <noteProcessorChainMap/>
+  <renderStartTime>10.803572</renderStartTime>
+  <renderEndTime>23.464285</renderEndTime>
+  <markersList/>
+  <loopRendering>false</loopRendering>
+  <tempo>
+    <enabled>true</enabled>
+    <visible>true</visible>
+    <line name='' version='2' max='240.0' min='30.0' resolution='-1.0' color='-8355712' rightBound='false' endPointsLinked='false'>
+      <linePoint x='0.0' y='60.0'/>
+      <linePoint x='9.785714' y='55.66667'/>
+      <linePoint x='11.107142' y='60.333336'/>
+      <linePoint x='12.428572' y='62.666664'/>
+      <linePoint x='18.428572' y='104.666664'/>
+      <linePoint x='19.446428' y='44.0'/>
+    </line>
+  </tempo>
+  <midiInputProcessor>
+    <keyMapping>PCH</keyMapping>
+    <velMapping>MIDI</velMapping>
+    <pitchConstant/>
+    <ampConstant/>
+    <scale>
+      <scaleName>12TET</scaleName>
+      <baseFrequency>261.62558</baseFrequency>
+      <octave>2.0</octave>
+      <ratios>
+        <ratio>1.0</ratio>
+        <ratio>1.0594631</ratio>
+        <ratio>1.122462</ratio>
+        <ratio>1.1892071</ratio>
+        <ratio>1.2599211</ratio>
+        <ratio>1.3348398</ratio>
+        <ratio>1.4142135</ratio>
+        <ratio>1.4983071</ratio>
+        <ratio>1.587401</ratio>
+        <ratio>1.6817929</ratio>
+        <ratio>1.7817974</ratio>
+        <ratio>1.8877486</ratio>
+      </ratios>
+    </scale>
+  </midiInputProcessor>
+</blueData>
